@@ -156,36 +156,6 @@ if __name__ == "__main__":
     # train the model
     trainer.train(dataset)
 
-    if args.render == 1:
-        torch.save(model, args.model + args.dataset + str(args.use_SAM) + str(args.SAM_name) +'.pth')
-        model.to('cuda')
-        losses = np.zeros((args.step, args.step))
-        alpha_vals = np.linspace(-args.alpha_range, args.alpha_range, args.step)
-        beta_vals = np.linspace(-args.alpha_range, args.alpha_range, args.step)
-
-        param_vector = get_model_params_vector(model)
-        direction1, direction2 = random_directions(param_vector)
-
-        model.theta_train = True
-        for i, alpha in tqdm(enumerate(alpha_vals)):
-            for j, beta in enumerate(beta_vals):
-                new_params = param_vector + alpha * direction1 + beta * direction2
-                set_model_params_vector(model, new_params)
-                total_loss = 0
-                data_size = dataset.train_data.shape[0]
-                all_idx = torch.split(torch.arange(data_size), args.batch_size)
-                with torch.no_grad():
-                    model.eval()
-                    loss_ = 0
-                    for batch_id, batch in enumerate(dataset.train_dataloader):
-                        *inputs, indices = batch
-                        batch_data = inputs
-                        rst_dict = model(indices, batch_data, epoch_id=0)
-                        loss_ += rst_dict['loss']
-                losses[i, j] = loss_ / len(dataset.train_dataloader)
-        model.theta_train = False
-
-
     # save beta, theta and top words
     beta = trainer.save_beta(current_run_dir)
     train_theta, test_theta = trainer.save_theta(dataset, current_run_dir)
