@@ -64,6 +64,7 @@ class IDEAS(nn.Module):
         self.doc_embeddings = nn.init.trunc_normal_(
                 torch.empty(num_documents, embed_size), std=0.1
             )
+        print(f"sos: {len(self.doc_embeddings)}")
         self.doc_embeddings = nn.Parameter(F.normalize(self.doc_embeddings, dim=1))
         self.TP = TP(weight_loss_TP, alpha_TP, sinkhorn_max_iter)
         ##

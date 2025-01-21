@@ -116,6 +116,7 @@ if __name__ == "__main__":
                         )
     elif args.model == "IDEAS":
         num_documents = len(dataset.train_dataloader.dataset)
+        print(f"so luong: {num_documents}")
         model = IDEAS(vocab_size=dataset.vocab_size,
                         data_name=args.dataset,
                         num_topics=args.num_topics,
