@@ -52,19 +52,21 @@ class IDEAS(nn.Module):
                 torch.empty(vocab_size, embed_size))
         self.word_embeddings = nn.Parameter(F.normalize(self.word_embeddings))
 
-
         self.topic_embeddings = torch.empty((num_topics, self.word_embeddings.shape[1]))
         nn.init.trunc_normal_(self.topic_embeddings, std=0.1)
         self.topic_embeddings = nn.Parameter(F.normalize(self.topic_embeddings))
 
         self.num_topics_per_group = num_topics // num_groups
         self.ECR = ECR(weight_loss_ECR, alpha_ECR, sinkhorn_max_iter)
-        #self.GR = GR(weight_loss_GR, alpha_GR, sinkhorn_max_iter)
         self.group_connection_regularizer = None
 
-        #
+        ##
+        self.doc_embeddings = nn.init.trunc_normal_(
+                torch.empty(num_documents, embed_size), std=0.1
+            )
+        self.doc_embeddings = nn.Parameter(F.normalize(self.doc_embeddings, dim=1))
         self.TP = TP(weight_loss_TP, alpha_TP, sinkhorn_max_iter)
-        #
+        ##
 
 
     def get_beta(self):
@@ -120,12 +122,6 @@ class IDEAS(nn.Module):
             self.topic_embeddings, self.word_embeddings)
         loss_ECR = self.ECR(cost)
         return loss_ECR
-
-    # def get_loss_GR(self):
-    #     cost = self.pairwise_euclidean_distance(
-    #         self.topic_embeddings, self.topic_embeddings) + 1e1 * torch.ones(self.num_topics, self.num_topics).cuda()
-    #     loss_GR = self.GR(cost, self.group_connection_regularizer)
-    #     return loss_GR
     
 
     def pairwise_euclidean_distance(self, x, y):
@@ -135,7 +131,7 @@ class IDEAS(nn.Module):
 
 
     def get_loss_TP(self, theta):
-        loss_TP = self.TP(theta, self.word_embeddings)
+        loss_TP = self.TP(theta, self.doc_embeddings)
         return loss_TP
 
 
@@ -170,7 +166,13 @@ class IDEAS(nn.Module):
         return rst_dict
 
 
+    
 
+    # def get_loss_GR(self):
+    #     cost = self.pairwise_euclidean_distance(
+    #         self.topic_embeddings, self.topic_embeddings) + 1e1 * torch.ones(self.num_topics, self.num_topics).cuda()
+    #     loss_GR = self.GR(cost, self.group_connection_regularizer)
+    #     return loss_GR
 
     # # Add OT
     # self.cluster_mean = nn.Parameter(torch.from_numpy(cluster_mean).float(), requires_grad=False)
