@@ -61,6 +61,7 @@ class BasicTrainer:
             self.logger.info("===>using lr_scheduler")
             lr_scheduler = self.make_lr_scheduler(adam_optimizer)
 
+        num_documents = len(dataset_handler.train_dataloader.dataset)
         data_size = len(dataset_handler.train_dataloader.dataset)
 
         for epoch_id, epoch in enumerate(tqdm(range(1, self.epochs + 1))):

@@ -115,6 +115,7 @@ if __name__ == "__main__":
                         weight_OT=args.weight_OT
                         )
     elif args.model == "IDEAS":
+        num_documents = len(dataset.train_dataloader.dataset)
         model = IDEAS(vocab_size=dataset.vocab_size,
                         data_name=args.dataset,
                         num_topics=args.num_topics,
@@ -130,7 +131,8 @@ if __name__ == "__main__":
                         alpha_TP=args.alpha_TP,
                         alpha_ECR=args.alpha_ECR,
                         alpha_GR=args.alpha_GR,
-                        beta_temp=args.beta_temp)       
+                        beta_temp=args.beta_temp,
+                        num_documents=num_documents)       
 
 
     model.weight_loss_TP = args.weight_loss_TP
