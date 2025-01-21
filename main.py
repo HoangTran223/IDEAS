@@ -113,8 +113,26 @@ if __name__ == "__main__":
                         pretrained_WE=pretrainWE if args.use_pretrainWE else None,
                         weight_OT=args.weight_OT
                         )
+    elif args.model == "IDEAS":
+        model = IDEAS(vocab_size=dataset.vocab_size,
+                        data_name=args.dataset,
+                        num_topics=args.num_topics,
+                        num_groups=args.num_groups,
+                        dropout=args.dropout,
+                        cluster_distribution=cluster_distribution,
+                        cluster_mean=cluster_mean,
+                        cluster_label=cluster_label,
+                        pretrained_WE=pretrainWE if args.use_pretrainWE else None,
+                        weight_loss_GR=args.weight_GR,
+                        weight_loss_ECR=args.weight_ECR,
+                        weight_loss_TP=args.weight_loss_TP,
+                        alpha_TP=args.alpha_TP,
+                        alpha_ECR=args.alpha_ECR,
+                        alpha_GR=args.alpha_GR,
+                        beta_temp=args.beta_temp)       
 
-    
+
+    model.weight_loss_TP = args.weight_loss_TP
     model.weight_loss_GR = args.weight_GR
     model.weight_loss_ECR = args.weight_ECR
     model = model.to(args.device)
@@ -124,16 +142,12 @@ if __name__ == "__main__":
     # create a trainer
     trainer = basic_trainer.BasicTrainer(model, model_name=args.model,
                                             epoch_threshold = args.epoch_threshold,
-                                            use_SAM = args.use_SAM,
-                                            SAM_name=args.SAM_name, epochs=args.epochs,
+                                            epochs=args.epochs,
                                             learning_rate=args.lr,
-                                            rho=args.rho,
                                             batch_size=args.batch_size,
                                             lr_scheduler=args.lr_scheduler,
                                             lr_step_size=args.lr_step_size,
-                                            device=args.device,
-                                            sigma=args.sigma,
-                                            lmbda=args.lmbda
+                                            device=args.device
                                             )
 
 
@@ -168,13 +182,7 @@ if __name__ == "__main__":
                         loss_ += rst_dict['loss']
                 losses[i, j] = loss_ / len(dataset.train_dataloader)
         model.theta_train = False
-        np.savez('loss_landscape/' + args.model + args.dataset + str(args.use_SAM) + str(args.SAM_name) + 'loss_landscape.npz', alpha_vals=alpha_vals, beta_vals=beta_vals, losses=losses)
-        np.savetxt('loss_landscape/' + args.dataset + str(args.use_SAM) + str(args.SAM_name) + 'alpha_vals.txt', alpha_vals, fmt='%.6f')
-        np.savetxt('loss_landscape/' + args.dataset + str(args.use_SAM) + str(args.SAM_name) + 'beta_vals.txt', beta_vals, fmt='%.6f')
-        np.savetxt('loss_landscape/' + args.dataset + str(args.use_SAM) + str(args.SAM_name) + 'losses.txt', losses, fmt='%.6f')
-        '''with h5py.File(args.model + args.dataset + str(args.use_SAM) + str(args.SAM_name) +'.h5', 'w') as f:
-            for name, param in model.state_dict().items():
-                f.create_dataset(name, data=param.cpu().numpy())'''
+
 
     # save beta, theta and top words
     beta = trainer.save_beta(current_run_dir)

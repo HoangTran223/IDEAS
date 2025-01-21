@@ -1,30 +1,27 @@
-import numpy as np
+﻿import numpy as np
 import torch
 from torch import nn
 import torch.nn.functional as F
 from .ECR import ECR
 from .GR import GR
-from .OT import OT
+from TP import TP
 import torch_kmeans
 import logging
 import sentence_transformers
 
 
-class NeuroMax(nn.Module):
+class IDEAS(nn.Module):
     def __init__(self, vocab_size, data_name = '20NG', num_topics=50, num_groups=10, en_units=200, dropout=0.,
                  cluster_distribution=None, cluster_mean=None, cluster_label=None,
-                 pretrained_WE=None, embed_size=200, beta_temp=0.2, is_OT=False,
-                 weight_loss_ECR=250.0, weight_loss_GR=250.0,
-                 alpha_GR=20.0, alpha_ECR=20.0, sinkhorn_alpha = 20.0, sinkhorn_max_iter=1000, weight_loss_OT=100.0,
-                 weight_loss_InfoNCE=10.0):
+                 pretrained_WE=None, embed_size=200, beta_temp=0.2,
+                 weight_loss_ECR=250.0, weight_loss_GR=250.0, weight_loss_TP = 250.0, alpha_TP = 20.0,
+                 alpha_GR=20.0, alpha_ECR=20.0, sinkhorn_alpha = 20.0, sinkhorn_max_iter=1000):
         super().__init__()
 
-        self.weight_loss_OT = weight_loss_OT
         self.num_topics = num_topics
         self.num_groups = num_groups
         self.beta_temp = beta_temp
         self.data_name = data_name
-        self.is_OT = is_OT
         self.a = 1 * np.ones((1, num_topics)).astype(np.float32)
         self.mu2 = nn.Parameter(torch.as_tensor(
             (np.log(self.a).T - np.mean(np.log(self.a), 1)).T))
@@ -55,18 +52,7 @@ class NeuroMax(nn.Module):
                 torch.empty(vocab_size, embed_size))
         self.word_embeddings = nn.Parameter(F.normalize(self.word_embeddings))
 
-        # Add OT
-        self.cluster_mean = nn.Parameter(torch.from_numpy(cluster_mean).float(), requires_grad=False)
-        self.cluster_distribution = nn.Parameter(torch.from_numpy(cluster_distribution).float(), requires_grad=False)
-        self.cluster_label = cluster_label
-        if not isinstance(self.cluster_label, torch.Tensor):
-            self.cluster_label = torch.tensor(self.cluster_label, dtype=torch.long, device='cuda')
-        else:
-            self.cluster_label = self.cluster_label.to(device='cuda', dtype=torch.long)
-        
-        self.map_t2c = nn.Linear(self.word_embeddings.shape[1], self.cluster_mean.shape[1], bias=False)
-        self.OT = OT(weight_loss_OT, sinkhorn_alpha, sinkhorn_max_iter)
-        #
+
         self.topic_embeddings = torch.empty((num_topics, self.word_embeddings.shape[1]))
         nn.init.trunc_normal_(self.topic_embeddings, std=0.1)
         self.topic_embeddings = nn.Parameter(F.normalize(self.topic_embeddings))
@@ -76,40 +62,10 @@ class NeuroMax(nn.Module):
         self.GR = GR(weight_loss_GR, alpha_GR, sinkhorn_max_iter)
         self.group_connection_regularizer = None
 
-        # for InfoNCE
-        if self.data_name in ['20NG', 'AGNews', 'YahooAnswers', 'IMDB']:
-            self.prj_rep = nn.Sequential(nn.Linear(self.num_topics, 384),
-                                        nn.Dropout(dropout))
-        elif self.data_name in ['StackOverflow', 'SearchSnippets', 'GoogleNews']:
-            self.prj_rep = nn.Sequential(nn.Linear(self.num_topics, 768),
-                                        nn.Dropout(dropout))
-        self.prj_bert = nn.Sequential()
-        self.weight_loss_InfoNCE = weight_loss_InfoNCE
+        #
+        self.TP = TP(weight_loss_TP, alpha_TP, sinkhorn_max_iter)
+        #
 
-    def create_group_connection_regularizer(self):
-        kmean_model = torch_kmeans.KMeans(
-            n_clusters=self.num_groups, max_iter=1000, seed=0, verbose=False,
-            normalize='unit')
-        group_id = kmean_model.fit_predict(self.topic_embeddings.reshape(
-            1, self.topic_embeddings.shape[0], self.topic_embeddings.shape[1]))
-        group_id = group_id.reshape(-1)
-        self.group_topic = [[] for _ in range(self.num_groups)]
-        for i in range(self.num_topics):
-            self.group_topic[group_id[i]].append(i)
-
-        self.group_connection_regularizer = torch.ones(
-            (self.num_topics, self.num_topics), device=self.topic_embeddings.device) / 5.
-        for i in range(self.num_topics):
-            for j in range(self.num_topics):
-                if group_id[i] == group_id[j]:
-                    self.group_connection_regularizer[i][j] = 1
-        self.group_connection_regularizer.fill_diagonal_(0)
-        self.group_connection_regularizer = self.group_connection_regularizer.clamp(min=1e-4)
-        for _ in range(50):
-            self.group_connection_regularizer = self.group_connection_regularizer / \
-                self.group_connection_regularizer.sum(axis=1, keepdim=True) / self.num_topics
-            self.group_connection_regularizer = (self.group_connection_regularizer \
-                + self.group_connection_regularizer.T) / 2.
 
     def get_beta(self):
         dist = self.pairwise_euclidean_distance(
@@ -147,27 +103,6 @@ class NeuroMax(nn.Module):
         else:
             return theta
 
-    def sim(self, rep, bert):
-        prep = self.prj_rep(rep)
-        pbert = self.prj_bert(bert)
-        return torch.exp(F.cosine_similarity(prep, pbert))
-
-    def csim(self, bow, bert):
-        pbow = self.prj_rep(bow)
-        pbert = self.prj_bert(bert)
-        csim_matrix = (pbow@pbert.T) / (pbow.norm(keepdim=True,
-                                                  dim=-1)@pbert.norm(keepdim=True, dim=-1).T)
-        csim_matrix = torch.exp(csim_matrix)
-        csim_matrix = csim_matrix / csim_matrix.sum(dim=1, keepdim=True)
-        return -csim_matrix.log()
-
-    def compute_loss_InfoNCE(self, rep, contextual_emb):
-        if self.weight_loss_InfoNCE <= 1e-6:
-            return 0.
-        else:
-            sim_matrix = self.csim(rep, contextual_emb)
-            return sim_matrix.diag().mean() * self.weight_loss_InfoNCE
-
     def compute_loss_KL(self, mu, logvar):
         var = logvar.exp()
         var_division = var / self.var2
@@ -192,29 +127,32 @@ class NeuroMax(nn.Module):
         loss_GR = self.GR(cost, self.group_connection_regularizer)
         return loss_GR
     
-    def get_loss_OT(self, input, indices):
-        bow = input[0]
-        theta, _ = self.encode(bow)
-        cd_batch = self.cluster_distribution[indices]  
-        cost = self.pairwise_euclidean_distance(self.cluster_mean, self.map_t2c(self.topic_embeddings))  
-        loss_OT = self.weight_loss_OT * self.OT(theta, cd_batch, cost)  
-        return loss_OT
 
     def pairwise_euclidean_distance(self, x, y):
         cost = torch.sum(x ** 2, axis=1, keepdim=True) + \
             torch.sum(y ** 2, dim=1) - 2 * torch.matmul(x, y.t())
         return cost
 
+
+    def get_loss_TP(self, indices, input, epoch_id = None):
+        bow = input[0]
+        contextual_emb = input[1]
+
+        rep, mu, logvar = self.get_representation(bow)
+        theta = rep
+
+        loss_TP = self.TP(theta, self.word_embeddings)
+        return loss_TP
+
+
     def forward(self, indices, input, epoch_id=None):
-        #bow = input["data"]
-        #contextual_emb = input["contextual_embed"]
+
         bow = input[0]
         contextual_emb = input[1]
 
         rep, mu, logvar = self.get_representation(bow)
         loss_KL = self.compute_loss_KL(mu, logvar)
         theta = rep
-        # theta, loss_KL = self.encode(bow)
 
         beta = self.get_beta()
 
@@ -224,31 +162,72 @@ class NeuroMax(nn.Module):
         loss_TM = recon_loss + loss_KL
 
         loss_ECR = self.get_loss_ECR()
+        loss_TP = self.get_loss_TP()
 
-        loss_InfoNCE = 0.0
-        if self.weight_loss_InfoNCE != 0.0:
-            loss_InfoNCE = self.compute_loss_InfoNCE(rep, contextual_emb)
-            
-        #OT
-        if self.is_OT:
-            loss_OT = self.get_loss_OT(input, indices)
-        else:
-            loss_OT = 0.0
-        if epoch_id == 10 and self.group_connection_regularizer is None:
-            self.create_group_connection_regularizer()
-        if self.group_connection_regularizer is not None and epoch_id > 10:
-            loss_GR = self.get_loss_GR()
-        else:
-            loss_GR = 0.
 
-        loss = loss_TM + loss_ECR + loss_GR + loss_InfoNCE + loss_OT
+        loss = loss_TM + loss_ECR + loss_TP
         rst_dict = {
             'loss': loss,
-            'loss_OT': loss_OT,
             'loss_TM': loss_TM,
             'loss_ECR': loss_ECR,
-            'loss_GR': loss_GR,
-            'loss_InfoNCE': loss_InfoNCE,
+            'loss_TP': loss_TP
         }
 
         return rst_dict
+
+
+
+
+    # # Add OT
+    # self.cluster_mean = nn.Parameter(torch.from_numpy(cluster_mean).float(), requires_grad=False)
+    # self.cluster_distribution = nn.Parameter(torch.from_numpy(cluster_distribution).float(), requires_grad=False)
+    # self.cluster_label = cluster_label
+    # if not isinstance(self.cluster_label, torch.Tensor):
+    #     self.cluster_label = torch.tensor(self.cluster_label, dtype=torch.long, device='cuda')
+    # else:
+    #     self.cluster_label = self.cluster_label.to(device='cuda', dtype=torch.long)
+    
+    # self.map_t2c = nn.Linear(self.word_embeddings.shape[1], self.cluster_mean.shape[1], bias=False)
+    # self.OT = OT(weight_loss_OT, sinkhorn_alpha, sinkhorn_max_iter)
+    # #
+
+
+    # def create_group_connection_regularizer(self):
+    #     kmean_model = torch_kmeans.KMeans(
+    #         n_clusters=self.num_groups, max_iter=1000, seed=0, verbose=False,
+    #         normalize='unit')
+    #     group_id = kmean_model.fit_predict(self.topic_embeddings.reshape(
+    #         1, self.topic_embeddings.shape[0], self.topic_embeddings.shape[1]))
+    #     group_id = group_id.reshape(-1)
+    #     self.group_topic = [[] for _ in range(self.num_groups)]
+    #     for i in range(self.num_topics):
+    #         self.group_topic[group_id[i]].append(i)
+
+    #     self.group_connection_regularizer = torch.ones(
+    #         (self.num_topics, self.num_topics), device=self.topic_embeddings.device) / 5.
+    #     for i in range(self.num_topics):
+    #         for j in range(self.num_topics):
+    #             if group_id[i] == group_id[j]:
+    #                 self.group_connection_regularizer[i][j] = 1
+    #     self.group_connection_regularizer.fill_diagonal_(0)
+    #     self.group_connection_regularizer = self.group_connection_regularizer.clamp(min=1e-4)
+    #     for _ in range(50):
+    #         self.group_connection_regularizer = self.group_connection_regularizer / \
+    #             self.group_connection_regularizer.sum(axis=1, keepdim=True) / self.num_topics
+    #         self.group_connection_regularizer = (self.group_connection_regularizer \
+    #             + self.group_connection_regularizer.T) / 2.
+
+
+    # def sim(self, rep, bert):
+    #     prep = self.prj_rep(rep)
+    #     pbert = self.prj_bert(bert)
+    #     return torch.exp(F.cosine_similarity(prep, pbert))
+
+    # def csim(self, bow, bert):
+    #     pbow = self.prj_rep(bow)
+    #     pbert = self.prj_bert(bert)
+    #     csim_matrix = (pbow@pbert.T) / (pbow.norm(keepdim=True,
+    #                                               dim=-1)@pbert.norm(keepdim=True, dim=-1).T)
+    #     csim_matrix = torch.exp(csim_matrix)
+    #     csim_matrix = csim_matrix / csim_matrix.sum(dim=1, keepdim=True)
+    #     return -csim_matrix.log()

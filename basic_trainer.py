@@ -12,25 +12,19 @@ from SAM_function.DREAM import DREAM
 from SAM_function.FSAM import FSAM
 
 class BasicTrainer:
-    def __init__(self, model, epoch_threshold = 150, model_name='NeuroMax', use_SAM=1, SAM_name='DREAM', epochs=200, learning_rate=0.002, batch_size=200, lr_scheduler=None, lr_step_size=125, log_interval=5, 
-                    rho = 0.005, device='cuda', sigma=0.1, lmbda=0.9, acc_step=8):
+    def __init__(self, model, epoch_threshold = 150, model_name='IDEAS', use_SAM=1, epochs=200, learning_rate=0.002, batch_size=200, lr_scheduler=None, lr_step_size=125, log_interval=5, 
+                     device='cuda'):
         self.model = model
         self.epoch_threshold = epoch_threshold
         self.model_name = model_name
-        self.SAM_name = SAM_name
         self.epochs = epochs
         self.learning_rate = learning_rate
         self.batch_size = batch_size
         self.lr_scheduler = lr_scheduler
         self.lr_step_size = lr_step_size
         self.log_interval = log_interval
-        self.use_SAM = use_SAM
 
-        self.rho = rho 
         self.device = device
-        self.sigma = sigma
-        self.lmbda = lmbda
-        self.acc_step = acc_step
         self.logger = logging.getLogger('main')
 
     def make_adam_optimizer(self,):
@@ -42,27 +36,6 @@ class BasicTrainer:
         optimizer = torch.optim.Adam(**args_dict)
         return optimizer
     
-
-    def make_sam_optimizer(self,):
-        base_optimizer = torch.optim.SGD
-        if self.SAM_name == 'FSAM':
-            optimizer = FSAM(
-                self.model.parameters(),
-                base_optimizer, device=self.device,
-                lr=self.learning_rate,
-                sigma=self.sigma, lmbda=self.lmbda
-                )
-        elif self.SAM_name == 'DREAM':
-            optimizer = DREAM(
-                self.model.parameters(),
-                base_optimizer, device=self.device,
-                lr=self.learning_rate,
-                sigma=self.sigma, lmbda=self.lmbda
-                )
-        else:
-            print("WRONG!!")
-        return optimizer
-
     def make_lr_scheduler(self, optimizer):
         if self.lr_scheduler == "StepLR":
             lr_scheduler = StepLR(
@@ -83,9 +56,7 @@ class BasicTrainer:
         return top_words, train_theta
 
     def train(self, dataset_handler, verbose=False):
-        accumulation_steps = self.acc_step
         adam_optimizer = self.make_adam_optimizer()
-        sam_optimizer = self.make_sam_optimizer() 
 
         if self.lr_scheduler:
             print("===>using lr_scheduler")
@@ -93,8 +64,6 @@ class BasicTrainer:
             lr_scheduler = self.make_lr_scheduler(adam_optimizer)
 
         data_size = len(dataset_handler.train_dataloader.dataset)
-        if self.use_SAM == 0:
-            print("Donot use SAM")
 
         for epoch_id, epoch in enumerate(tqdm(range(1, self.epochs + 1))):
             self.model.train()
@@ -103,45 +72,12 @@ class BasicTrainer:
             for batch_id, batch in enumerate(dataset_handler.train_dataloader): 
                 *inputs, indices = batch
                 batch_data = inputs
-                # rst_dict = self.model(indices, is_OT, batch_data, epoch_id=epoch)
                 rst_dict = self.model(indices, batch_data, epoch_id=epoch)
                 batch_loss = rst_dict['loss']
                 batch_loss.backward()
 
-                # batch_data_tensor = torch.tensor(batch_data, dtype=torch.float32)
-                # theta = self.model.get_theta(batch_data_tensor)
-
-                if self.use_SAM == 0:
-                    adam_optimizer.step()
-                    adam_optimizer.zero_grad()
-                else:
-                    #if (batch_id + 1) % accumulation_steps == 0 or (batch_id + 1) == len(dataset_handler.train_dataloader):
-                    if epoch_id > self.epoch_threshold:
-                        #theta, _ = self.model.encode(batch_data[0].to('cuda'))
-                        #loss_OT_ = self.model.get_loss_OT(theta, indices)
-                        
-                        if self.SAM_name == 'DREAM':
-                            self.model.is_OT = False
-                            loss_OT_ = self.model.get_loss_OT(batch_data, indices)
-                            sam_optimizer.first_step(loss_OT_,
-                                                    zero_grad=True)
-                        else:
-                            sam_optimizer.first_step(zero_grad=True)
-
-                        # rst_dict_adv = self.model(indices, is_OT, batch_data, epoch_id=epoch)
-                        rst_dict_adv = self.model(indices, batch_data, epoch_id=epoch)
-
-                        batch_loss_adv = rst_dict_adv['loss']
-                        batch_loss_adv.backward()
-
-                        sam_optimizer.second_step(zero_grad=True)
-                    
-                    else:
-                        if self.SAM_name == 'DREAM':
-                            self.model.is_OT = True
-                        adam_optimizer.step()
-                        adam_optimizer.zero_grad()
-                    
+                adam_optimizer.step()
+                adam_optimizer.zero_grad()
 
                 for key in rst_dict:
                     try:
@@ -159,7 +95,6 @@ class BasicTrainer:
                 for key in loss_rst_dict:
                     output_log += f' {key}: {loss_rst_dict[key] / data_size :.3f}'
 
-                #print(output_log)
                 self.logger.info(output_log)
 
     def test(self, input_data, train_data=None):
