@@ -48,7 +48,7 @@ class TP(nn.Module):
 
             loss_GR = (group * (group.log() - transp.log() - 1) \
                 + transp).sum()
-            loss_GR *= self.weight_loss_GR
+            loss_GR *= self.weight_loss_TP
 
             return loss_GR
 

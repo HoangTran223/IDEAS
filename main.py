@@ -126,7 +126,6 @@ if __name__ == "__main__":
                         cluster_mean=cluster_mean,
                         cluster_label=cluster_label,
                         pretrained_WE=pretrainWE if args.use_pretrainWE else None,
-                        weight_loss_GR=args.weight_GR,
                         weight_loss_ECR=args.weight_ECR,
                         weight_loss_TP=args.weight_loss_TP,
                         alpha_TP=args.alpha_TP,
@@ -137,7 +136,6 @@ if __name__ == "__main__":
 
 
     model.weight_loss_TP = args.weight_loss_TP
-    model.weight_loss_GR = args.weight_GR
     model.weight_loss_ECR = args.weight_ECR
     model = model.to(args.device)
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
