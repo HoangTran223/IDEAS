@@ -61,13 +61,14 @@ class IDEAS(nn.Module):
         self.group_connection_regularizer = None
 
         ##
-        self.doc_embeddings = nn.init.trunc_normal_(
-                torch.empty(num_documents, num_documents), std=0.1
-            )
+        self.doc_embeddings = torch.empty((num_documents, num_documents))
+        nn.init.trunc_normal_(self.doc_embeddings, std=0.1)
+        self.doc_embeddings = nn.Parameter(F.normalize(self.doc_embeddings))
+
         print(f"chieuX cua doc_embeddings {len(self.doc_embeddings)}")
         print(f"chieuY cua doc_embeddings : {len(self.doc_embeddings[0])}")
-        self.doc_embeddings = nn.Parameter(F.normalize(self.doc_embeddings, dim=1))
         self.TP = TP(weight_loss_TP, alpha_TP, sinkhorn_max_iter)
+
         ##
 
 
@@ -165,14 +166,15 @@ class IDEAS(nn.Module):
         loss_TM = recon_loss + loss_KL
 
         loss_ECR = self.get_loss_ECR()
-        #loss_TP = self.get_loss_TP()
+        loss_TP = self.get_loss_TP()
 
 
-        loss = loss_TM + loss_ECR
+        loss = loss_TM + loss_ECR + loss_TP
         rst_dict = {
             'loss': loss,
             'loss_TM': loss_TM,
             'loss_ECR': loss_ECR,
+            'loss_TP': loss_TP
         }
 
         return rst_dict
