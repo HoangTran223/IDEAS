@@ -64,8 +64,8 @@ class IDEAS(nn.Module):
         self.doc_embeddings = nn.init.trunc_normal_(
                 torch.empty(num_documents, num_documents), std=0.1
             )
-        print(f"sos: {len(self.doc_embeddings)}")
-        print(f"sos1: {len(self.doc_embeddings[0])}")
+        print(f"chieuX cua doc_embeddings {len(self.doc_embeddings)}")
+        print(f"chieuY cua doc_embeddings : {len(self.doc_embeddings[0])}")
         self.doc_embeddings = nn.Parameter(F.normalize(self.doc_embeddings, dim=1))
         self.TP = TP(weight_loss_TP, alpha_TP, sinkhorn_max_iter)
         ##
@@ -132,8 +132,16 @@ class IDEAS(nn.Module):
         return cost
 
 
-    def get_loss_TP(self, theta):
-        loss_TP = self.TP(theta, self.doc_embeddings)
+    def get_loss_TP(self):
+        cost = self.pairwise_euclidean_distance(
+            self.doc_embeddings, self.doc_embeddings) + 1e1 * torch.ones(self.num_topics, self.num_topics).cuda()
+
+        norms = torch.norm(doc_embeddings, dim=1, keepdim=True)  # ||e_i||
+        P = torch.mm(doc_embeddings, doc_embeddings.t()) / (norms * norms.t() + self.epsilon)  # cosine similarity
+        P = P / (norms * norms.t())  # Adjusted similarity (based on your formula)
+        P = (P + P.T) / 2  # Symmetric matrix
+
+        loss_TP = self.TP(cost, P)
         return loss_TP
 
 
@@ -154,7 +162,7 @@ class IDEAS(nn.Module):
         loss_TM = recon_loss + loss_KL
 
         loss_ECR = self.get_loss_ECR()
-        loss_TP = self.get_loss_TP(theta)
+        loss_TP = self.get_loss_TP()
 
 
         loss = loss_TM + loss_ECR + loss_TP
