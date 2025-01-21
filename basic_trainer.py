@@ -67,6 +67,7 @@ class BasicTrainer:
         for epoch_id, epoch in enumerate(tqdm(range(1, self.epochs + 1))):
             self.model.train()
             loss_rst_dict = defaultdict(float)
+            print(f"loss_TP: {loss_rst_dict['loss_TP']}, loss_TM: {loss_rst_dict['loss_TM']}, loss_ECR: {loss_rst_dict['loss_ECR']} \n")
 
             for batch_id, batch in enumerate(dataset_handler.train_dataloader): 
                 *inputs, indices = batch
