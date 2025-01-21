@@ -73,7 +73,7 @@ class IDEAS(nn.Module):
 
 
         self.doc_embeddings = nn.Parameter(
-            torch.randn((num_documents, num_documents)), p=2, dim=1, eps=1e-4
+            torch.randn((num_documents, num_documents))
         )
 
         ##
