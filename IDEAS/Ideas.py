@@ -138,7 +138,7 @@ class IDEAS(nn.Module):
         cost = self.pairwise_euclidean_distance(
                     self.doc_embeddings, self.doc_embeddings)
         norms = torch.norm(self.doc_embeddings, dim=1, keepdim=True)  # ||e_i||
-        P = torch.mm(self.doc_embeddings, self.doc_embeddings.t()) / (norms * norms.t() + self.epsilon)  # cosine similarity
+        P = torch.mm(self.doc_embeddings, self.doc_embeddings.t()) / (norms * norms.t() + 1e-6)  # cosine similarity
         P = P / (norms * norms.t())  # Adjusted similarity (based on your formula)
         P = (P + P.T) / 2  # Symmetric matrix
         print(f"dimen_cost: {len(cost)}")
