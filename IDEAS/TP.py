@@ -14,7 +14,7 @@ class TP(nn.Module):
 
 
     def forward(self, M, group):
-        if self.weight_loss_GR <= 1e-6:
+        if self.weight_loss_TP <= 1e-6:
             return 0.
         else:
             # M: KxV cost matrix
