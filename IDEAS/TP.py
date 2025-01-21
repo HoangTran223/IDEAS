@@ -26,8 +26,8 @@ class TP(nn.Module):
             # Step 2: Compute similarity matrix P (D x D)
             norms = torch.norm(embeddings, dim=1, keepdim=True)  # ||e_i||
             P = torch.mm(embeddings, embeddings.t()) / (norms * norms.t() + self.epsilon)  # cosine similarity
-            P = P / P.sum(dim=1, keepdim=True)  # Row-normalize P
-            P = (P + P.T) / 2
+            P = P / (norms * norms.t())  # Adjusted similarity (based on your formula)
+            P = (P + P.T) / 2  # Symmetric matrix
 
             # Step 3: Sinkhorn's algorithm to solve for Q
             D = theta.size(0)
