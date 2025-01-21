@@ -61,9 +61,10 @@ class IDEAS(nn.Module):
         self.group_connection_regularizer = None
 
         ##
-        self.doc_embeddings = torch.empty((num_documents, num_documents))
-        nn.init.trunc_normal_(self.doc_embeddings, std=0.1)
-        self.doc_embeddings = nn.Parameter(F.normalize(self.doc_embeddings))
+        # self.doc_embeddings = torch.empty((num_documents, num_documents))
+        # nn.init.trunc_normal_(self.doc_embeddings, std=0.1)
+        # self.doc_embeddings = nn.Parameter(F.normalize(self.doc_embeddings))
+        self.doc_embeddings = nn.Parameter(F.normalize(self.doc_embeddings, p=2, dim=1, eps=1e-8))
 
         print(f"chieuX cua doc_embeddings {len(self.doc_embeddings)}")
         print(f"chieuY cua doc_embeddings : {len(self.doc_embeddings[0])}")
@@ -140,7 +141,7 @@ class IDEAS(nn.Module):
                     self.doc_embeddings, self.doc_embeddings)
         cost = cost.clamp(min=1e-4)
 
-        norms = torch.norm(self.doc_embeddings, dim=1, keepdim=True)  # ||e_i||
+        norms = torch.norm(self.doc_embeddings, dim=1, keepdim=True).clamp(min=1e-6)  # ||e_i||
         P = torch.mm(self.doc_embeddings, self.doc_embeddings.t()) / (norms * norms.t() + 1e-4)  # cosine similarity
         P = P / (norms * norms.t())  # Adjusted similarity (based on your formula)
         P = (P + P.T) / 2  # Symmetric matrix
