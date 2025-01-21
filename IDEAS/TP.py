@@ -9,7 +9,7 @@ class TP(nn.Module):
         self.OT_max_iter = OT_max_iter
         self.weight_loss_TP = weight_loss_TP
         self.stopThr = stopThr
-        self.epsilon = 1e-8
+        self.epsilon = 1e-4
         self.transp = None
 
 
@@ -42,7 +42,7 @@ class TP(nn.Module):
                     err = torch.norm(torch.sum(torch.abs(bb - b), dim=0), p=float('inf'))
 
             transp = u * (K * v.T)
-            transp = transp.clamp(min=1e-6)
+            transp = transp.clamp(min=1e-4)
 
             self.transp = transp
 

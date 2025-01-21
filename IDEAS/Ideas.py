@@ -138,12 +138,17 @@ class IDEAS(nn.Module):
         #     self.doc_embeddings, self.doc_embeddings) + 1e1 * torch.ones(self.num_topics, self.num_topics).cuda()
         cost = self.pairwise_euclidean_distance(
                     self.doc_embeddings, self.doc_embeddings)
+        cost = cost.clamp(min=1e-4)
+
         norms = torch.norm(self.doc_embeddings, dim=1, keepdim=True)  # ||e_i||
-        P = torch.mm(self.doc_embeddings, self.doc_embeddings.t()) / (norms * norms.t() + 1e-6)  # cosine similarity
+        P = torch.mm(self.doc_embeddings, self.doc_embeddings.t()) / (norms * norms.t() + 1e-4)  # cosine similarity
         P = P / (norms * norms.t())  # Adjusted similarity (based on your formula)
         P = (P + P.T) / 2  # Symmetric matrix
-        # print(f"dimen_cost: {len(cost)}")
-        # print(f"dimen_P: {len(P)}")
+        
+        if torch.isnan(cost).any():
+            print("cost contains NaN values!")
+        if torch.isnan(P).any():
+            print("P contains NaN values!")
 
         loss_TP = self.TP(cost, P)
         return loss_TP
