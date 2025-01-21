@@ -9,7 +9,7 @@ class TP(nn.Module):
         self.OT_max_iter = OT_max_iter
         self.weight_loss_TP = weight_loss_TP
         self.stopThr = stopThr
-        self.epsilon = 1e-16
+        self.epsilon = 1e-8
         self.transp = None
 
 
@@ -46,8 +46,10 @@ class TP(nn.Module):
 
             self.transp = transp
 
-            loss_GR = (group * (group.log() - transp.log() - 1) \
-                + transp).sum()
+            # loss_GR = (group * (group.log() - transp.log() - 1) \
+            #     + transp).sum()
+            loss_GR = ((group + self.epsilon) * (torch.log(group + self.epsilon) \
+                         - torch.log(transp) - 1) + transp).sum()
             loss_GR *= self.weight_loss_TP
 
             return loss_GR
