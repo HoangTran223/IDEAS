@@ -24,6 +24,9 @@ class TP(nn.Module):
             device = M.device
             group = group.to(device)
 
+            group = group + 1e-4  # Tránh group bằng 0
+            M = M + 1e-4
+
             # Sinkhorn's algorithm
             a = (group.sum(axis=1)).unsqueeze(1).to(device)
             b = (group.sum(axis=0)).unsqueeze(1).to(device)
@@ -44,15 +47,18 @@ class TP(nn.Module):
             transp = u * (K * v.T)
             transp = transp.clamp(min=1e-4)
 
-            self.transp = transp
+            print(f"transp: {transp}")  # Debug ma trận vận chuyển
+            print(f"group: {group}")
+
+            #self.transp = transp
 
             # loss_GR = (group * (group.log() - transp.log() - 1) \
             #     + transp).sum()
-            loss_GR = ((group + self.epsilon) * (torch.log(group + self.epsilon) \
+            loss_TP = ((group + self.epsilon) * (torch.log(group + self.epsilon) \
                          - torch.log(transp) - 1) + transp).sum()
-            loss_GR *= self.weight_loss_TP
+            loss_TP *= self.weight_loss_TP
 
-            return loss_GR
+            return loss_TP
 
 
 

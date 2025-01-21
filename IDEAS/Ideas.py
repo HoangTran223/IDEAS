@@ -70,6 +70,12 @@ class IDEAS(nn.Module):
         print(f"chieuY cua doc_embeddings : {len(self.doc_embeddings[0])}")
         self.TP = TP(weight_loss_TP, alpha_TP, sinkhorn_max_iter)
 
+
+
+        self.doc_embeddings = nn.Parameter(
+            torch.randn((num_documents, num_documents)), p=2, dim=1, eps=1e-4
+        )
+
         ##
 
 
