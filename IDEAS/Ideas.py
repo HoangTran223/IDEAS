@@ -141,8 +141,8 @@ class IDEAS(nn.Module):
         P = torch.mm(self.doc_embeddings, self.doc_embeddings.t()) / (norms * norms.t() + 1e-6)  # cosine similarity
         P = P / (norms * norms.t())  # Adjusted similarity (based on your formula)
         P = (P + P.T) / 2  # Symmetric matrix
-        print(f"dimen_cost: {len(cost)}")
-        print(f"dimen_P: {len(P)}")
+        # print(f"dimen_cost: {len(cost)}")
+        # print(f"dimen_P: {len(P)}")
 
         loss_TP = self.TP(cost, P)
         return loss_TP
