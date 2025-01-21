@@ -21,6 +21,7 @@ class TP(nn.Module):
             
             # Step 1: Compute cost matrix C (D x D)
             C = torch.cdist(theta, theta, p=2) ** 2  # ||theta_i - theta_j||_2^2
+            C.fill_diagonal_(float('inf'))
 
             # Step 2: Compute similarity matrix P (D x D)
             norms = torch.norm(embeddings, dim=1, keepdim=True)  # ||e_i||
@@ -35,6 +36,7 @@ class TP(nn.Module):
 
             u = torch.ones_like(a)  # D x 1
             K = torch.exp(-C * self.sinkhorn_alpha)  # Exponential kernel for Sinkhorn
+            K.fill_diagonal_(0)
 
             err = 1
             cpt = 0
@@ -49,6 +51,7 @@ class TP(nn.Module):
             Q = u * (K * v.t())
             Q = Q.clamp(min=1e-6)  # Avoid numerical issues
             Q = Q / Q.sum()
+            Q.fill_diagonal_(0)
             self.transp = Q
 
             # Step 4: Compute KL divergence KL(P || Q)
