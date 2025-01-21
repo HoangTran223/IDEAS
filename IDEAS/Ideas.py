@@ -165,15 +165,14 @@ class IDEAS(nn.Module):
         loss_TM = recon_loss + loss_KL
 
         loss_ECR = self.get_loss_ECR()
-        loss_TP = self.get_loss_TP()
+        #loss_TP = self.get_loss_TP()
 
 
-        loss = loss_TM + loss_ECR + loss_TP
+        loss = loss_TM + loss_ECR
         rst_dict = {
             'loss': loss,
             'loss_TM': loss_TM,
             'loss_ECR': loss_ECR,
-            'loss_TP': loss_TP
         }
 
         return rst_dict
