@@ -134,13 +134,7 @@ class IDEAS(nn.Module):
         return cost
 
 
-    def get_loss_TP(self, indices, input, epoch_id = None):
-        bow = input[0]
-        contextual_emb = input[1]
-
-        rep, mu, logvar = self.get_representation(bow)
-        theta = rep
-
+    def get_loss_TP(self, theta):
         loss_TP = self.TP(theta, self.word_embeddings)
         return loss_TP
 
@@ -162,7 +156,7 @@ class IDEAS(nn.Module):
         loss_TM = recon_loss + loss_KL
 
         loss_ECR = self.get_loss_ECR()
-        loss_TP = self.get_loss_TP()
+        loss_TP = self.get_loss_TP(theta)
 
 
         loss = loss_TM + loss_ECR + loss_TP

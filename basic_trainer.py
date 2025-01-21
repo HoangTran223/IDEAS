@@ -8,8 +8,6 @@ import logging
 import os
 import scipy
 
-from SAM_function.DREAM import DREAM
-from SAM_function.FSAM import FSAM
 
 class BasicTrainer:
     def __init__(self, model, epoch_threshold = 150, model_name='IDEAS', use_SAM=1, epochs=200, learning_rate=0.002, batch_size=200, lr_scheduler=None, lr_step_size=125, log_interval=5, 
@@ -74,10 +72,11 @@ class BasicTrainer:
                 batch_data = inputs
                 rst_dict = self.model(indices, batch_data, epoch_id=epoch)
                 batch_loss = rst_dict['loss']
-                batch_loss.backward()
 
-                adam_optimizer.step()
                 adam_optimizer.zero_grad()
+                batch_loss.backward()
+                adam_optimizer.step()
+                #adam_optimizer.zero_grad()
 
                 for key in rst_dict:
                     try:
