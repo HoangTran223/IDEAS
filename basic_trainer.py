@@ -67,7 +67,6 @@ class BasicTrainer:
         for epoch_id, epoch in enumerate(tqdm(range(1, self.epochs + 1))):
             self.model.train()
             loss_rst_dict = defaultdict(float)
-            print(f"loss_TP: {loss_rst_dict['loss_TP']}, loss_TM: {loss_rst_dict['loss_TM']}, loss_ECR: {loss_rst_dict['loss_ECR']} \n")
 
             for batch_id, batch in enumerate(dataset_handler.train_dataloader): 
                 *inputs, indices = batch
@@ -75,10 +74,9 @@ class BasicTrainer:
                 rst_dict = self.model(indices, batch_data, epoch_id=epoch)
                 batch_loss = rst_dict['loss']
 
-                adam_optimizer.zero_grad()
                 batch_loss.backward()
                 adam_optimizer.step()
-                #adam_optimizer.zero_grad()
+                adam_optimizer.zero_grad()
 
                 for key in rst_dict:
                     try:
@@ -97,6 +95,8 @@ class BasicTrainer:
                     output_log += f' {key}: {loss_rst_dict[key] / data_size :.3f}'
 
                 self.logger.info(output_log)
+
+            print(f"loss_TP: {loss_rst_dict['loss_TP']}, loss_TM: {loss_rst_dict['loss_TM']}, loss_ECR: {loss_rst_dict['loss_ECR']} \n")
 
     def test(self, input_data, train_data=None):
         data_size = input_data.shape[0]
