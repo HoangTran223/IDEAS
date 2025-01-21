@@ -133,13 +133,16 @@ class IDEAS(nn.Module):
 
 
     def get_loss_TP(self):
+        # cost = self.pairwise_euclidean_distance(
+        #     self.doc_embeddings, self.doc_embeddings) + 1e1 * torch.ones(self.num_topics, self.num_topics).cuda()
         cost = self.pairwise_euclidean_distance(
-            self.doc_embeddings, self.doc_embeddings) + 1e1 * torch.ones(self.num_topics, self.num_topics).cuda()
-
+                    self.doc_embeddings, self.doc_embeddings)
         norms = torch.norm(doc_embeddings, dim=1, keepdim=True)  # ||e_i||
         P = torch.mm(doc_embeddings, doc_embeddings.t()) / (norms * norms.t() + self.epsilon)  # cosine similarity
         P = P / (norms * norms.t())  # Adjusted similarity (based on your formula)
         P = (P + P.T) / 2  # Symmetric matrix
+        print(f"dimen_cost: {len(cost)}")
+        print(f"dimen_P: {len(P)}")
 
         loss_TP = self.TP(cost, P)
         return loss_TP
