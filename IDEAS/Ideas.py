@@ -3,7 +3,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 from .ECR import ECR
-from .GR import GR
+#from .GR import GR
 from TP import TP
 import torch_kmeans
 import logging
@@ -59,7 +59,7 @@ class IDEAS(nn.Module):
 
         self.num_topics_per_group = num_topics // num_groups
         self.ECR = ECR(weight_loss_ECR, alpha_ECR, sinkhorn_max_iter)
-        self.GR = GR(weight_loss_GR, alpha_GR, sinkhorn_max_iter)
+        #self.GR = GR(weight_loss_GR, alpha_GR, sinkhorn_max_iter)
         self.group_connection_regularizer = None
 
         #
@@ -121,11 +121,11 @@ class IDEAS(nn.Module):
         loss_ECR = self.ECR(cost)
         return loss_ECR
 
-    def get_loss_GR(self):
-        cost = self.pairwise_euclidean_distance(
-            self.topic_embeddings, self.topic_embeddings) + 1e1 * torch.ones(self.num_topics, self.num_topics).cuda()
-        loss_GR = self.GR(cost, self.group_connection_regularizer)
-        return loss_GR
+    # def get_loss_GR(self):
+    #     cost = self.pairwise_euclidean_distance(
+    #         self.topic_embeddings, self.topic_embeddings) + 1e1 * torch.ones(self.num_topics, self.num_topics).cuda()
+    #     loss_GR = self.GR(cost, self.group_connection_regularizer)
+    #     return loss_GR
     
 
     def pairwise_euclidean_distance(self, x, y):
