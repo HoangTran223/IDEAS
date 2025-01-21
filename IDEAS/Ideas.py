@@ -61,7 +61,7 @@ class IDEAS(nn.Module):
         self.group_connection_regularizer = None
 
         ##
-        # self.doc_embeddings = torch.empty((num_documents, num_documents))
+        self.doc_embeddings = torch.empty((num_documents, num_documents))
         # nn.init.trunc_normal_(self.doc_embeddings, std=0.1)
         # self.doc_embeddings = nn.Parameter(F.normalize(self.doc_embeddings))
         self.doc_embeddings = nn.Parameter(F.normalize(self.doc_embeddings, p=2, dim=1, eps=1e-8))
