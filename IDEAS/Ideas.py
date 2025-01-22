@@ -4,7 +4,7 @@ from torch import nn
 import torch.nn.functional as F
 from .ECR import ECR
 #from .GR import GR
-from .ETP_new import ETP
+from .DT_ETP import DT_ETP
 from .TP import TP
 import torch_kmeans
 import logging
@@ -70,7 +70,7 @@ class IDEAS(nn.Module):
 
         self.DT_alpha = DT_alpha
         self.topic_weights = nn.Parameter((torch.ones(self.num_topics) / self.num_topics).unsqueeze(1))
-        self.DT_ETP = ETP(self.DT_alpha, init_b_dist=self.topic_weights)
+        self.DT_ETP = DT_ETP(self.DT_alpha, init_b_dist=self.topic_weights)
 
         self.doc_embeddings = torch.empty((self.num_documents, self.num_documents))
         self.doc_embeddings = nn.Parameter(
@@ -81,6 +81,8 @@ class IDEAS(nn.Module):
         print(f"chieuY cua doc_embeddings : {len(self.doc_embeddings[0])}")
         self.TP = TP(weight_loss_TP, alpha_TP, sinkhorn_max_iter)
 
+        self.document_emb_prj = nn.Sequential(nn.Linear(self.num_documents, self.word_embeddings.shape[1] ),
+                                       nn.Dropout(dropout))
         ##
 
 
@@ -147,7 +149,8 @@ class IDEAS(nn.Module):
 
     def get_loss_TP(self):
         cost = self.pairwise_euclidean_distance(
-                    self.doc_embeddings, self.doc_embeddings) + 1e1 * torch.ones(self.num_documents, self.num_documents).cuda()
+                    self.doc_embeddings, self.doc_embeddings) + \
+                        1e1 * torch.ones(self.num_documents, self.num_documents).cuda()
 
 
         norms = torch.norm(self.doc_embeddings, dim=1, keepdim=True).clamp(min=1e-6)  # ||e_i||
@@ -163,9 +166,12 @@ class IDEAS(nn.Module):
         loss_TP = self.TP(cost, P)
         return loss_TP
     
-    def get_loss_DT(self):
-        loss_DT, transp_DT = self.DT_ETP(self.doc_embeddings, self.topic_embeddings)
-        return loss_DT
+    def get_loss_DT_ETP(self):
+        document_prj = self.document_emb_prj(self.doc_embeddings)
+
+        loss_DT_ETP, transp_DT = self.DT_ETP(self.doc_embeddings, self.topic_embeddings)
+        return loss_DT_ETP
+
 
 
 
@@ -187,16 +193,16 @@ class IDEAS(nn.Module):
 
         loss_ECR = self.get_loss_ECR()
         loss_TP = self.get_loss_TP()
-        loss_DT = self.get_loss_DT()
+        loss_DT_ETP = self.get_loss_DT_ETP()
 
 
-        loss = loss_TM + loss_ECR + loss_TP + loss_DT
+        loss = loss_TM + loss_ECR + loss_TP + loss_DT_ETP
         rst_dict = {
             'loss': loss,
             'loss_TM': loss_TM,
             'loss_ECR': loss_ECR,
             'loss_TP': loss_TP,
-            'loss_DT': loss_DT
+            'loss_DT_ETP': loss_DT_ETP
         }
 
         return rst_dict
