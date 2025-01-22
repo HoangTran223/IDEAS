@@ -70,7 +70,7 @@ class IDEAS(nn.Module):
 
         self.DT_alpha = DT_alpha
         self.topic_weights = nn.Parameter((torch.ones(self.num_topics) / self.num_topics).unsqueeze(1))
-        self.DT_ETP = DT_ETP(self.DT_alpha, init_b_dist=self.topic_weights)
+        self.DT_ETP = DT_ETP(self.DT_alpha)
 
         self.doc_embeddings = torch.empty((self.num_documents, self.num_documents))
         self.doc_embeddings = nn.Parameter(
