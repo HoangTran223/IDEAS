@@ -4,6 +4,7 @@ from torch import nn
 import torch.nn.functional as F
 from .ECR import ECR
 #from .GR import GR
+from .ETP_new import ETP
 from .TP import TP
 import torch_kmeans
 import logging
@@ -14,10 +15,11 @@ class IDEAS(nn.Module):
     def __init__(self, vocab_size, data_name = '20NG', num_topics=50, num_groups=10, en_units=200, dropout=0.,
                  cluster_distribution=None, cluster_mean=None, cluster_label=None,
                  pretrained_WE=None, embed_size=200, beta_temp=0.2, num_documents=None,
-                 weight_loss_ECR=250.0, weight_loss_TP = 250.0, alpha_TP = 20.0,
+                 weight_loss_ECR=250.0, weight_loss_TP = 250.0, alpha_TP = 20.0, DT_alpha: float=3.0,
                  alpha_GR=20.0, alpha_ECR=20.0, sinkhorn_alpha = 20.0, sinkhorn_max_iter=1000):
         super().__init__()
 
+        self.num_documents = num_documents
         self.num_topics = num_topics
         self.num_groups = num_groups
         self.beta_temp = beta_temp
@@ -66,9 +68,12 @@ class IDEAS(nn.Module):
         # # self.doc_embeddings = nn.Parameter(F.normalize(self.doc_embeddings))
         # self.doc_embeddings = nn.Parameter(F.normalize(self.doc_embeddings, p=2, dim=1, eps=1e-8))
 
-        self.doc_embeddings = torch.empty((num_documents, num_documents))
+        self.topic_weights = nn.Parameter((torch.ones(self.num_topics) / self.num_topics).unsqueeze(1))
+        self.DT_ETP = ETP(self.DT_alpha, init_b_dist=self.topic_weights)
+
+        self.doc_embeddings = torch.empty((self.num_documents, self.num_documents))
         self.doc_embeddings = nn.Parameter(
-            torch.randn((num_documents, num_documents))
+            torch.randn((self.num_documentss, self.num_documents))
         )
 
         print(f"chieuX cua doc_embeddings {len(self.doc_embeddings)}")
@@ -141,7 +146,7 @@ class IDEAS(nn.Module):
 
     def get_loss_TP(self):
         cost = self.pairwise_euclidean_distance(
-                    self.doc_embeddings, self.doc_embeddings) + 1e1 * torch.ones(num_documents, num_documents).cuda()
+                    self.doc_embeddings, self.doc_embeddings) + 1e1 * torch.ones(self.num_documents, self.num_documents).cuda()
 
 
         norms = torch.norm(self.doc_embeddings, dim=1, keepdim=True).clamp(min=1e-6)  # ||e_i||
@@ -156,6 +161,11 @@ class IDEAS(nn.Module):
 
         loss_TP = self.TP(cost, P)
         return loss_TP
+    
+    def get_loss_DT(self):
+        loss_DT, transp_DT = self.DT_ETP(self.doc_embeddings, self.topic_embeddings)
+        return loss_DT
+
 
 
     def forward(self, indices, input, epoch_id=None):
@@ -176,14 +186,16 @@ class IDEAS(nn.Module):
 
         loss_ECR = self.get_loss_ECR()
         loss_TP = self.get_loss_TP()
+        loss_DT = self.get_loss_DT()
 
 
-        loss = loss_TM + loss_ECR + loss_TP
+        loss = loss_TM + loss_ECR + loss_TP + loss_DT
         rst_dict = {
             'loss': loss,
             'loss_TM': loss_TM,
             'loss_ECR': loss_ECR,
-            'loss_TP': loss_TP
+            'loss_TP': loss_TP,
+            'loss_DT': loss_DT
         }
 
         return rst_dict

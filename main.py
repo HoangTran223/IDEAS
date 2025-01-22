@@ -125,6 +125,7 @@ if __name__ == "__main__":
                         cluster_distribution=cluster_distribution,
                         cluster_mean=cluster_mean,
                         cluster_label=cluster_label,
+                        DT_alpha=args.DT_alpha
                         pretrained_WE=pretrainWE if args.use_pretrainWE else None,
                         weight_loss_ECR=args.weight_ECR,
                         weight_loss_TP=args.weight_loss_TP,
