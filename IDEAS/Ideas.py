@@ -74,7 +74,7 @@ class IDEAS(nn.Module):
 
         self.doc_embeddings = torch.empty((self.num_documents, self.num_documents))
         self.doc_embeddings = nn.Parameter(
-            torch.randn((self.num_documentss, self.num_documents))
+            torch.randn((self.num_documents, self.num_documents))
         )
 
         print(f"chieuX cua doc_embeddings {len(self.doc_embeddings)}")
