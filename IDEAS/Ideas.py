@@ -191,8 +191,9 @@ class IDEAS(nn.Module):
         minibatch_embeddings = self.doc_embeddings[minibatch_indices]
 
         norms = torch.norm(minibatch_embeddings, dim=1, keepdim=True).clamp(min=1e-6)
-        P = torch.mm(minibatch_embeddings, minibatch_embeddings.t()) / (norms * norms.t() + 1e-4)
+        P = torch.mm(minibatch_embeddings, minibatch_embeddings.t()) / (norms * norms.t() + 1e-6)
         P = (P + P.T) / 2  # Symmetric matrix
+        P = P / P.sum(dim=1, keepdim=True) 
         return P
 
 

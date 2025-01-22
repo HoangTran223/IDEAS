@@ -2,7 +2,7 @@
 from torch import nn
 
 class TP(nn.Module):
-    def __init__(self, weight_loss_TP, sinkhorn_alpha, OT_max_iter=100, stopThr=.5e-2):
+    def __init__(self, weight_loss_TP, sinkhorn_alpha, OT_max_iter=1000, stopThr=.5e-2):
         super().__init__()
 
         self.sinkhorn_alpha = sinkhorn_alpha
@@ -30,7 +30,7 @@ class TP(nn.Module):
 
             u = (torch.ones_like(a) / a.size()[0]).to(device) # Kx1
 
-            K = torch.exp(-M * self.sinkhorn_alpha)
+            K = torch.exp(-M * self.sinkhorn_alpha).clamp(min=1e-6)
             err = 1
             cpt = 0
             while err > self.stopThr and cpt < self.OT_max_iter:
@@ -43,6 +43,8 @@ class TP(nn.Module):
 
             transp = u * (K * v.T)
             transp = transp.clamp(min=1e-4)
+
+            group = group.clamp(min=1e-6)
 
             print(f"transp: {transp}")  # ma trận vận chuyển
             print(f"group: {group}")
