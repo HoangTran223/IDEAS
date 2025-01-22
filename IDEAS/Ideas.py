@@ -83,8 +83,8 @@ class IDEAS(nn.Module):
         print(f"chieuY cua doc_embeddings : {len(self.doc_embeddings[0])}")
         # self.TP = TP(weight_loss_TP, alpha_TP, sinkhorn_max_iter)
 
-        # self.document_emb_prj = nn.Sequential(nn.Linear(self.num_documents, self.word_embeddings.shape[1] ),
-        #                                nn.Dropout(dropout))
+        self.document_emb_prj = nn.Sequential(nn.Linear(self.num_documents, self.word_embeddings.shape[1] ),
+                                       nn.Dropout(dropout))
         ##
 
 
