@@ -2,14 +2,14 @@
 from torch import nn
 
 class TP(nn.Module):
-    def __init__(self, weight_loss_TP, sinkhorn_alpha, OT_max_iter=5000, stopThr=.5e-2):
+    def __init__(self, weight_loss_TP, sinkhorn_alpha, OT_max_iter=500, stopThr=.5e-2):
         super().__init__()
 
         self.sinkhorn_alpha = sinkhorn_alpha
         self.OT_max_iter = OT_max_iter
         self.weight_loss_TP = weight_loss_TP
         self.stopThr = stopThr
-        self.epsilon = 1e-4
+        self.epsilon = 1e-6
         self.transp = None
 
 
@@ -44,7 +44,7 @@ class TP(nn.Module):
             transp = u * (K * v.T)
             transp = transp.clamp(min=1e-4)
 
-            print(f"transp: {transp}")  # Debug ma trận vận chuyển
+            print(f"transp: {transp}")  # ma trận vận chuyển
             print(f"group: {group}")
 
             #self.transp = transp
