@@ -255,8 +255,7 @@ class IDEAS(nn.Module):
             'loss': loss,
             'loss_TM': loss_TM,
             'loss_ECR': loss_ECR,
-            'loss_TP': loss_TP
-            #'loss_DT_ETP': loss_DT_ETP
+            'loss_DT_ETP': loss_DT_ETP
         }
 
         return rst_dict
