@@ -204,9 +204,9 @@ class IDEAS(nn.Module):
                         1e1 * torch.ones(self.num_documents, self.num_documents).cuda()
 
         self.matrixP = self.create_matrixP()
-        # norms = torch.norm(self.doc_embeddings, dim=1, keepdim=True).clamp(min=1e-6)  # ||e_i||
+        # norms = torch.norm(self.doc_embeddings, dim=1, keepdim=True).clamp(min=1e-6) 
         # P = torch.mm(self.doc_embeddings, self.doc_embeddings.t()) / (norms * norms.t() + 1e-4)  # cosine similarity
-        # P = P / (norms * norms.t())  # Adjusted similarity (based on your formula)
+        # P = P / (norms * norms.t()) 
         # P = (P + P.T) / 2  # Symmetric matrix
         
         if torch.isnan(cost).any():
