@@ -199,7 +199,7 @@ class IDEAS(nn.Module):
     def get_loss_TP(self, minibatch_indices):
         minibatch_embeddings = self.doc_embeddings[minibatch_indices]
         cost = self.pairwise_euclidean_distance(minibatch_embeddings, minibatch_embeddings) \
-           + 1e1 * torch.ones(minibatch_embeddings.size(0), minibatch_embeddings.size(0))
+           + 1e1 * torch.ones(minibatch_embeddings.size(0), minibatch_embeddings.size(0)).to(minibatch_embeddings.device)
 
         self.matrixP = self.create_matrixP(minibatch_indices)
         loss_TP = self.TP(cost, self.matrixP)
