@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from .ECR import ECR
 #from .GR import GR
 from .DT_ETP import DT_ETP
-from .TP import TP
+#from .TP import TP
 import torch_kmeans
 import logging
 import sentence_transformers
@@ -73,9 +73,11 @@ class IDEAS(nn.Module):
         self.DT_ETP = DT_ETP(self.DT_alpha)
 
         self.doc_embeddings = torch.empty((self.num_documents, self.num_documents))
-        self.doc_embeddings = nn.Parameter(
-            torch.randn((self.num_documents, self.num_documents))
-        )
+        nn.init.trunc_normal_(self.doc_embeddings, std=0.1)
+        self.doc_embeddings = nn.Parameter(F.normalize(self.doc_embeddings))
+        # self.doc_embeddings = nn.Parameter(
+        #     torch.randn((self.num_documents, self.num_documents))
+        # )
 
         print(f"chieuX cua doc_embeddings {len(self.doc_embeddings)}")
         print(f"chieuY cua doc_embeddings : {len(self.doc_embeddings[0])}")
@@ -146,31 +148,6 @@ class IDEAS(nn.Module):
             torch.sum(y ** 2, dim=1) - 2 * torch.matmul(x, y.t())
         return cost
 
-
-    def create_group_connection_regularizer(self):
-        kmean_model = torch_kmeans.KMeans(
-            n_clusters=self.num_groups, max_iter=1000, seed=0, verbose=False,
-            normalize='unit')
-        group_id = kmean_model.fit_predict(self.topic_embeddings.reshape(
-            1, self.topic_embeddings.shape[0], self.topic_embeddings.shape[1]))
-        group_id = group_id.reshape(-1)
-        self.group_topic = [[] for _ in range(self.num_groups)]
-        for i in range(self.num_topics):
-            self.group_topic[group_id[i]].append(i)
-
-        self.group_connection_regularizer = torch.ones(
-            (self.num_topics, self.num_topics), device=self.topic_embeddings.device) / 5.
-        for i in range(self.num_topics):
-            for j in range(self.num_topics):
-                if group_id[i] == group_id[j]:
-                    self.group_connection_regularizer[i][j] = 1
-        self.group_connection_regularizer.fill_diagonal_(0)
-        self.group_connection_regularizer = self.group_connection_regularizer.clamp(min=1e-4)
-        for _ in range(50):
-            self.group_connection_regularizer = self.group_connection_regularizer / \
-                self.group_connection_regularizer.sum(axis=1, keepdim=True) / self.num_topics
-            self.group_connection_regularizer = (self.group_connection_regularizer \
-                + self.group_connection_regularizer.T) / 2.
     
     def create_matrixP(self):
         self.matrixP = torch.ones(
