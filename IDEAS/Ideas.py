@@ -141,7 +141,7 @@ class IDEAS(nn.Module):
 
     def get_loss_TP(self):
         cost = self.pairwise_euclidean_distance(
-                    self.doc_embeddings, self.doc_embeddings) + 1e1 * torch.ones(self.num_documents, self.num_documents).cuda()
+                    self.doc_embeddings, self.doc_embeddings) + 1e1 * torch.ones(num_documents, num_documents).cuda()
 
 
         norms = torch.norm(self.doc_embeddings, dim=1, keepdim=True).clamp(min=1e-6)  # ||e_i||
