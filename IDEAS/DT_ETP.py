@@ -4,12 +4,13 @@ import torch.nn.functional as F
 from ._model_utils import pairwise_euclidean_distance
 
 class DT_ETP(nn.Module):
-    def __init__(self, sinkhorn_alpha, OT_max_iter=5000, stopThr=.5e-2):
+    def __init__(self, sinkhorn_alpha, weight_loss_DT_ETP,  OT_max_iter=5000, stopThr=.5e-2):
         super().__init__()
         self.sinkhorn_alpha = sinkhorn_alpha
         self.OT_max_iter = OT_max_iter
         self.stopThr = stopThr
         self.epsilon = 1e-16
+        self.weight_loss_DT_ETP = weight_loss_DT_ETP
 
     def forward(self, x, y):
         # Sinkhorn's algorithm
@@ -34,6 +35,8 @@ class DT_ETP(nn.Module):
 
         transp = u * (K * v.T)
         loss_DT_ETP = torch.sum(transp * M)
+
+        loss_DT_ETP *= self.weight_loss_DT_ETP
 
         return loss_DT_ETP, transp
 

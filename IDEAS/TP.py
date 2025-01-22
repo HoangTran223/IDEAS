@@ -2,7 +2,7 @@
 from torch import nn
 
 class TP(nn.Module):
-    def __init__(self, weight_loss_TP, sinkhorn_alpha, OT_max_iter=10, stopThr=.5e-2):
+    def __init__(self, weight_loss_TP, sinkhorn_alpha, OT_max_iter=100, stopThr=.5e-2):
         super().__init__()
 
         self.sinkhorn_alpha = sinkhorn_alpha
@@ -46,8 +46,6 @@ class TP(nn.Module):
 
             print(f"transp: {transp}")  # ma trận vận chuyển
             print(f"group: {group}")
-
-            #self.transp = transp
 
             loss_TP = (group * (group.log() - transp.log() - 1) \
                 + transp).sum()

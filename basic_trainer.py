@@ -96,11 +96,8 @@ class BasicTrainer:
 
                 self.logger.info(output_log)
 
-            #print(f"loss_TM: {loss_rst_dict['loss_TM']}, loss_ECR: {loss_rst_dict['loss_ECR']} \n")
-            if(loss_rst_dict['loss_TP'] > 1e6):
-                print(f"loss_TP: {loss_rst_dict['loss_TP']}, loss_TM: {loss_rst_dict['loss_TM']}, loss_ECR: {loss_rst_dict['loss_ECR']} \n")
-            else:
-                print(f"100000 * loss_TP: {100000 * loss_rst_dict['loss_TP']}")
+            print(f"loss_TP: {loss_rst_dict['loss_TP']}, loss_TM: {loss_rst_dict['loss_TM']}, loss_ECR: {loss_rst_dict['loss_ECR']} \n")
+
     def test(self, input_data, train_data=None):
         data_size = input_data.shape[0]
         theta = list()

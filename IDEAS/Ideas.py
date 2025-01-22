@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from .ECR import ECR
 #from .GR import GR
 from .DT_ETP import DT_ETP
-#from .TP import TP
+from .TP import TP
 import torch_kmeans
 import logging
 import sentence_transformers
@@ -13,9 +13,10 @@ import sentence_transformers
 
 class IDEAS(nn.Module):
     def __init__(self, vocab_size, data_name = '20NG', num_topics=50, num_groups=10, en_units=200, dropout=0.,
-                 cluster_distribution=None, cluster_mean=None, cluster_label=None,
+                 cluster_distribution=None, cluster_mean=None, cluster_label=None, 
                  pretrained_WE=None, embed_size=200, beta_temp=0.2, num_documents=None,
-                 weight_loss_ECR=250.0, weight_loss_TP = 250.0, alpha_TP = 20.0, DT_alpha: float=3.0,
+                 weight_loss_ECR=250.0, weight_loss_TP = 250.0, alpha_TP = 20.0,
+                 DT_alpha: float=3.0, weight_loss_DT_ETP = 10.0, 
                  alpha_GR=20.0, alpha_ECR=20.0, sinkhorn_alpha = 20.0, sinkhorn_max_iter=1000):
         super().__init__()
 
@@ -68,9 +69,7 @@ class IDEAS(nn.Module):
         # # self.doc_embeddings = nn.Parameter(F.normalize(self.doc_embeddings))
         # self.doc_embeddings = nn.Parameter(F.normalize(self.doc_embeddings, p=2, dim=1, eps=1e-8))
         self.matrixP = None
-        self.DT_alpha = DT_alpha
-        self.topic_weights = nn.Parameter((torch.ones(self.num_topics) / self.num_topics).unsqueeze(1))
-        self.DT_ETP = DT_ETP(self.DT_alpha)
+        self.DT_ETP = DT_ETP(weight_loss_DT_ETP, DT_alpha)
 
         self.doc_embeddings = torch.empty((self.num_documents, self.num_documents))
         nn.init.trunc_normal_(self.doc_embeddings, std=0.1)
@@ -81,7 +80,7 @@ class IDEAS(nn.Module):
 
         print(f"chieuX cua doc_embeddings {len(self.doc_embeddings)}")
         print(f"chieuY cua doc_embeddings : {len(self.doc_embeddings[0])}")
-        # self.TP = TP(weight_loss_TP, alpha_TP, sinkhorn_max_iter)
+        self.TP = TP(weight_loss_TP, alpha_TP)
 
         self.document_emb_prj = nn.Sequential(nn.Linear(self.num_documents, self.word_embeddings.shape[1] ),
                                        nn.Dropout(dropout))
@@ -149,30 +148,23 @@ class IDEAS(nn.Module):
         return cost
 
     
-    def create_matrixP(self):
-        self.matrixP = torch.ones(
-            (self.num_documents, self.num_documents), device=self.topic_embeddings.device) / 5.
+    # def create_matrixP(self):
+    #     self.matrixP = torch.ones(
+    #         (self.num_documents, self.num_documents), device=self.topic_embeddings.device) / 5.
 
-        for i in range(self.num_documents):
-            for j in range(self.num_documents):
-                e_i = self.doc_embeddings[i]
-                e_j = self.doc_embeddings[j]
+    #     for i in range(self.num_documents):
+    #         for j in range(self.num_documents):
+    #             e_i = self.doc_embeddings[i]
+    #             e_j = self.doc_embeddings[j]
                 
-                norm_i = torch.norm(e_i).clamp(min=1e-6)  
-                norm_j = torch.norm(e_j).clamp(min=1e-6)  
+    #             norm_i = torch.norm(e_i).clamp(min=1e-6)  
+    #             norm_j = torch.norm(e_j).clamp(min=1e-6)  
                 
-                p_ij = torch.dot(e_i, e_j) / (norm_i * norm_j)
-                self.matrixP[i, j] = p_ij
+    #             p_ij = torch.dot(e_i, e_j) / (norm_i * norm_j)
+    #             self.matrixP[i, j] = p_ij
 
-        self.matrixP = self.matrixP.clamp(min = 1e-4)
-        return self.matrixP
-
-
-    def get_loss_GR(self):
-        cost = self.pairwise_euclidean_distance(
-            self.topic_embeddings, self.topic_embeddings) + 1e1 * torch.ones(self.num_topics, self.num_topics).cuda()
-        loss_GR = self.GR(cost, self.group_connection_regularizer)
-        return loss_GR
+    #     self.matrixP = self.matrixP.clamp(min = 1e-6)
+    #     return self.matrixP
 
 
     # def get_loss_TP(self):
@@ -188,21 +180,37 @@ class IDEAS(nn.Module):
         
     #     if torch.isnan(cost).any():
     #         print("cost contains NaN values!")
-    #     if torch.isnan(P).any():
+    #     if torch.isnan(matrixP).any():
     #         print("matrixP contains NaN values!")
 
     #     loss_TP = self.TP(cost, self.matrixP)
     #     return loss_TP
+
+
+    def create_matrixP(self, minibatch_indices):
+        minibatch_embeddings = self.doc_embeddings[minibatch_indices]
+
+        norms = torch.norm(minibatch_embeddings, dim=1, keepdim=True).clamp(min=1e-6)
+        P = torch.mm(minibatch_embeddings, minibatch_embeddings.t()) / (norms * norms.t() + 1e-4)
+        P = (P + P.T) / 2  # Symmetric matrix
+        return P
+
+
+    def get_loss_TP(self, minibatch_indices):
+        minibatch_embeddings = self.doc_embeddings[minibatch_indices]
+        cost = self.pairwise_euclidean_distance(minibatch_embeddings, minibatch_embeddings) \
+           + 1e1 * torch.ones(minibatch_embeddings.size(0), minibatch_embeddings.size(0))
+
+        self.matrixP = self.create_matrixP(minibatch_indices)
+        loss_TP = self.TP(cost, self.matrixP)
+        return loss_TP
     
-
-
-
+    
     def get_loss_DT_ETP(self):
         document_prj = self.document_emb_prj(self.doc_embeddings)
 
         loss_DT_ETP, transp_DT = self.DT_ETP(document_prj, self.topic_embeddings)
         return loss_DT_ETP
-
 
 
 
@@ -223,16 +231,17 @@ class IDEAS(nn.Module):
         loss_TM = recon_loss + loss_KL
 
         loss_ECR = self.get_loss_ECR()
-        #loss_TP = self.get_loss_TP()
+        loss_TP = self.get_loss_TP(indices)
         loss_DT_ETP = self.get_loss_DT_ETP()
 
-        loss = loss_TM + loss_ECR + loss_DT_ETP
-        #loss = loss_TM + loss_ECR + loss_TP + loss_DT_ETP
+        #loss = loss_TM + loss_ECR + loss_DT_ETP
+        loss = loss_TM + loss_ECR + loss_TP + loss_DT_ETP
         rst_dict = {
             'loss': loss,
             'loss_TM': loss_TM,
             'loss_ECR': loss_ECR,
-            'loss_DT_ETP': loss_DT_ETP
+            'loss_DT_ETP': loss_DT_ETP,
+            'loss_TP': loss_TP
         }
 
         return rst_dict

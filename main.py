@@ -128,13 +128,14 @@ if __name__ == "__main__":
                         pretrained_WE=pretrainWE if args.use_pretrainWE else None,
                         weight_loss_ECR=args.weight_ECR,
                         weight_loss_TP=args.weight_loss_TP,
+                        weight_loss_DT_ETP= arg.weight_loss_DT_ETP,
                         alpha_TP=args.alpha_TP,
                         alpha_ECR=args.alpha_ECR,
                         alpha_GR=args.alpha_GR,
                         beta_temp=args.beta_temp,
                         num_documents=num_documents)       
 
-
+    model.weight_loss_DT_ETP = args.weight_loss_DT_ETP
     model.weight_loss_TP = args.weight_loss_TP
     model.weight_loss_ECR = args.weight_ECR
     model = model.to(args.device)

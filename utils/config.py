@@ -32,6 +32,7 @@ def add_model_argument(parser):
     parser.add_argument('--DT_alpha', type=float, default=3.)
     parser.add_argument('--alpha_TP', type=float, default=20.)
     parser.add_argument('--weight_loss_TP', type=float, default=250.)
+    parser.add_argument('--weight_loss_DT_ETP', type=float, default=250.)
     #
 
     parser.add_argument('--beta_temp', type=float, default=0.2)
