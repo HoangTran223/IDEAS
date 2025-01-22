@@ -49,10 +49,10 @@ class TP(nn.Module):
 
             #self.transp = transp
 
-            # loss_GR = (group * (group.log() - transp.log() - 1) \
-            #     + transp).sum()
-            loss_TP = ((group + self.epsilon) * (torch.log(group + self.epsilon) \
-                         - torch.log(transp) - 1) + transp).sum()
+            loss_TP = (group * (group.log() - transp.log() - 1) \
+                + transp).sum()
+            # loss_TP = ((group + self.epsilon) * (torch.log(group + self.epsilon) \
+            #              - torch.log(transp) - 1) + transp).sum()
             loss_TP *= self.weight_loss_TP
 
             return loss_TP
