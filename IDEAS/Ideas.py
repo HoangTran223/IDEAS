@@ -198,24 +198,24 @@ class IDEAS(nn.Module):
         return loss_GR
 
 
-    def get_loss_TP(self):
-        cost = self.pairwise_euclidean_distance(
-                    self.doc_embeddings, self.doc_embeddings) + \
-                        1e1 * torch.ones(self.num_documents, self.num_documents).cuda()
+    # def get_loss_TP(self):
+    #     cost = self.pairwise_euclidean_distance(
+    #                 self.doc_embeddings, self.doc_embeddings) + \
+    #                     1e1 * torch.ones(self.num_documents, self.num_documents).cuda()
 
-        self.matrixP = self.create_matrixP()
-        # norms = torch.norm(self.doc_embeddings, dim=1, keepdim=True).clamp(min=1e-6) 
-        # P = torch.mm(self.doc_embeddings, self.doc_embeddings.t()) / (norms * norms.t() + 1e-4)  # cosine similarity
-        # P = P / (norms * norms.t()) 
-        # P = (P + P.T) / 2  # Symmetric matrix
+    #     self.matrixP = self.create_matrixP()
+    #     # norms = torch.norm(self.doc_embeddings, dim=1, keepdim=True).clamp(min=1e-6) 
+    #     # P = torch.mm(self.doc_embeddings, self.doc_embeddings.t()) / (norms * norms.t() + 1e-4)  # cosine similarity
+    #     # P = P / (norms * norms.t()) 
+    #     # P = (P + P.T) / 2  # Symmetric matrix
         
-        if torch.isnan(cost).any():
-            print("cost contains NaN values!")
-        if torch.isnan(P).any():
-            print("matrixP contains NaN values!")
+    #     if torch.isnan(cost).any():
+    #         print("cost contains NaN values!")
+    #     if torch.isnan(P).any():
+    #         print("matrixP contains NaN values!")
 
-        loss_TP = self.TP(cost, self.matrixP)
-        return loss_TP
+    #     loss_TP = self.TP(cost, self.matrixP)
+    #     return loss_TP
     
 
 
@@ -246,17 +246,17 @@ class IDEAS(nn.Module):
         loss_TM = recon_loss + loss_KL
 
         loss_ECR = self.get_loss_ECR()
-        loss_TP = self.get_loss_TP()
+        #loss_TP = self.get_loss_TP()
         loss_DT_ETP = self.get_loss_DT_ETP()
 
-
-        loss = loss_TM + loss_ECR + loss_TP + loss_DT_ETP
+        loss = loss_TM + loss_ECR + loss_DT_ETP
+        #loss = loss_TM + loss_ECR + loss_TP + loss_DT_ETP
         rst_dict = {
             'loss': loss,
             'loss_TM': loss_TM,
             'loss_ECR': loss_ECR,
-            'loss_TP': loss_TP,
-            'loss_DT_ETP': loss_DT_ETP
+            'loss_TP': loss_TP
+            #'loss_DT_ETP': loss_DT_ETP
         }
 
         return rst_dict
