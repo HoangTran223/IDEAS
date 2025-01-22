@@ -24,9 +24,6 @@ class TP(nn.Module):
             device = M.device
             group = group.to(device)
 
-            group = group + 1e-4  # Tránh group bằng 0
-            M = M + 1e-4
-
             # Sinkhorn's algorithm
             a = (group.sum(axis=1)).unsqueeze(1).to(device)
             b = (group.sum(axis=0)).unsqueeze(1).to(device)
