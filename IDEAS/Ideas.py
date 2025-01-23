@@ -89,7 +89,7 @@ class IDEAS(nn.Module):
     def create_group_topic(self):
         # Step 1: Hierarchical Agglomerative Clustering (HAC) to find large clusters
         distances = torch.cdist(self.topic_embeddings, self.topic_embeddings, p=2)  # Euclidean distance
-        distances = distances.cpu().numpy()
+        distances = distances.detach().cpu().numpy()
 
         # Dùng linkage để thực hiện HAC
         Z = linkage(distances, method='ward')  # Phương pháp 'ward' cho HAC
