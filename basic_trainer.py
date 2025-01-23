@@ -25,6 +25,10 @@ class BasicTrainer:
         self.device = device
         self.logger = logging.getLogger('main')
 
+        ##
+        self.model.create_group_topic()
+        ##
+
     def make_adam_optimizer(self,):
         args_dict = {
             'params': self.model.parameters(),
@@ -53,7 +57,6 @@ class BasicTrainer:
 
         return top_words, train_theta
 
-    self.model.create_group_topic()
     def train(self, dataset_handler, verbose=False):
         adam_optimizer = self.make_adam_optimizer()
 
