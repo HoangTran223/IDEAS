@@ -116,6 +116,7 @@ class IDEAS(nn.Module):
         
     def get_contrastive_loss(self):
         loss_cl = 0.0
+        margin = 0.2
         for group_idx, sub_clusters in self.sub_cluster.items():
             for sub_group_id, topics in sub_clusters.items():
                 if len(topics) <= 1:
@@ -123,8 +124,8 @@ class IDEAS(nn.Module):
                 embeddings = self.topic_embeddings[topics]
                 
                 # Tính cosine similarity giữa các embedding trong cùng một sub-cluster
-                norm_embeddings = torch.norm(embeddings, p=2, dim=1, keepdim=True)
-                similarity_matrix = torch.mm(embeddings, embeddings.T) / (norm_embeddings * norm_embeddings.T)
+                norm_embeddings = F.normalize(embeddings, p=2, dim=1)
+                similarity_matrix = torch.mm(norm_embeddings, norm_embeddings.T)
 
                 # Tính loss: Nếu sim > threshold, coi là positive pair, ngược lại là negative pair
                 # for i in range(similarity_matrix.shape[0]):
@@ -134,8 +135,23 @@ class IDEAS(nn.Module):
                 #             loss_cl += F.relu(1 - sim)  # Loss cho positive pair
                 #         else:  # Negative pair
                 #             loss_cl += F.relu(sim)  # Loss cho negative pair
-                sim = similarity_matrix[torch.triu_indices(similarity_matrix.shape[0], similarity_matrix.shape[1], offset=1)]
-                loss_cl += torch.sum(F.relu(self.threshold_cl - sim))
+                # sim = similarity_matrix[torch.triu_indices(similarity_matrix.shape[0], similarity_matrix.shape[1], offset=1)]
+                # loss_cl += torch.sum(F.relu(self.threshold_cl - sim))
+                positive_mask = torch.eye(similarity_matrix.size(0), dtype=torch.bool).to(similarity_matrix.device)
+                negative_mask = ~positive_mask
+                
+                positive_sim = similarity_matrix[positive_mask]
+                negative_sim = similarity_matrix[negative_mask]
+
+                # Hard negatives
+                hard_negatives = negative_sim[negative_sim > self.threshold_cl - margin]
+
+                # Tính loss
+                loss_pos = torch.sum(F.relu(1 - positive_sim))  # Positive pairs
+                loss_neg = torch.sum(F.relu(hard_negatives - self.threshold_cl))  # Hard negatives
+
+                loss_cl += loss_pos + loss_neg
+                self.threshold_cl = self.threshold_cl * 0.98
 
         return loss_cl
         
