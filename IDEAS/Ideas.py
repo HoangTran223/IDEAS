@@ -189,12 +189,28 @@ class IDEAS(nn.Module):
 
     def create_matrixP(self, minibatch_indices):
         minibatch_embeddings = self.doc_embeddings[minibatch_indices]
+        self.matrixP = torch.ones(
+            (minibatch_indices, minibatch_indices), device=self.topic_embeddings.device) / minibatch_indices
+        
+        for i in range(minibatch_indices):
+            for j in range(minibatch_indices):
+                e_i = self.minibatch_embeddings[i]
+                e_j = self.minibatch_embeddings[j]
+                
+                norm_i = torch.norm(e_i).clamp(min=1e-6)  
+                norm_j = torch.norm(e_j).clamp(min=1e-6)  
+                
+                p_ij = torch.dot(e_i, e_j) / (norm_i * norm_j)
+                self.matrixP[i, j] = p_ij
 
-        norms = torch.norm(minibatch_embeddings, dim=1, keepdim=True).clamp(min=1e-6)
-        P = torch.mm(minibatch_embeddings, minibatch_embeddings.t()) / (norms * norms.t() + 1e-6)
-        P = (P + P.T) / 2  # Symmetric matrix
-        P = P / P.sum(dim=1, keepdim=True) 
-        return P
+        self.matrixP.fill_diagonal_(0)
+        self.matrixP = self.matrixP.clamp(min = 1e-4)
+
+        # norms = torch.norm(minibatch_embeddings, dim=1, keepdim=True).clamp(min=1e-6)
+        # P = torch.mm(minibatch_embeddings, minibatch_embeddings.t()) / (norms * norms.t() + 1e-6)
+        # P = (P + P.T) / 2  # Symmetric matrix
+        # P = P / P.sum(dim=1, keepdim=True) 
+        # return P
 
 
     def get_loss_TP(self, minibatch_indices):
