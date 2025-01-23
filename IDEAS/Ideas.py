@@ -116,7 +116,6 @@ class IDEAS(nn.Module):
         
     def get_contrastive_loss(self):
         loss_cl = 0.0
-        margin = 0.2
         for group_idx, sub_clusters in self.sub_cluster.items():
             for sub_group_id, topics in sub_clusters.items():
                 if len(topics) <= 1:
@@ -137,21 +136,15 @@ class IDEAS(nn.Module):
                 #             loss_cl += F.relu(sim)  # Loss cho negative pair
                 # sim = similarity_matrix[torch.triu_indices(similarity_matrix.shape[0], similarity_matrix.shape[1], offset=1)]
                 # loss_cl += torch.sum(F.relu(self.threshold_cl - sim))
-                positive_mask = torch.eye(similarity_matrix.size(0), dtype=torch.bool).to(similarity_matrix.device)
-                negative_mask = ~positive_mask
                 
-                positive_sim = similarity_matrix[positive_mask]
-                negative_sim = similarity_matrix[negative_mask]
-
-                # Hard negatives
-                hard_negatives = negative_sim[negative_sim > self.threshold_cl - margin]
+                positive_pairs = similarity_matrix[similarity_matrix >= self.threshold_cl]
+                negative_pairs = similarity_matrix[similarity_matrix < self.threshold_cl]
 
                 # Tính loss
-                loss_pos = torch.sum(F.relu(1 - positive_sim))  # Positive pairs
-                loss_neg = torch.sum(F.relu(hard_negatives - self.threshold_cl))  # Hard negatives
+                loss_pos = torch.sum(F.relu(1 - positive_pairs))  # Positive pairs
+                loss_neg = torch.sum(F.relu(negative_pairs - self.threshold_cl))  # Negative pairs
 
                 loss_cl += loss_pos + loss_neg
-                self.threshold_cl = self.threshold_cl * 0.98
 
         return loss_cl
         
@@ -248,8 +241,8 @@ class IDEAS(nn.Module):
 
 
     def forward(self, indices, input, epoch_id=None):
-        # if self.sub_cluster is None:
-        self.create_group_topic()
+        if self.sub_cluster is None or (epoch_id is not None and epoch_id % 10 == 0):
+            self.create_group_topic()
 
         bow = input[0]
         contextual_emb = input[1]
