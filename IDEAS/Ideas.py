@@ -10,7 +10,7 @@ from .TP import TP
 import torch_kmeans
 import logging
 import sentence_transformers
-
+from scipy.cluster.hierarchy import linkage, fcluster
 
 class IDEAS(nn.Module):
     def __init__(self, vocab_size, data_name = '20NG', num_topics=50, num_groups=10, en_units=200, dropout=0.,
