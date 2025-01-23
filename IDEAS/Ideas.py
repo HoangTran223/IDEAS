@@ -129,7 +129,7 @@ class IDEAS(nn.Module):
                 for i in range(similarity_matrix.shape[0]):
                     for j in range(i + 1, similarity_matrix.shape[1]):
                         sim = similarity_matrix[i, j]
-                        if sim > threshold_cl:  # Positive pair
+                        if sim > self.threshold_cl:  # Positive pair
                             loss_cl += F.relu(1 - sim)  # Loss cho positive pair
                         else:  # Negative pair
                             loss_cl += F.relu(sim)  # Loss cho negative pair
