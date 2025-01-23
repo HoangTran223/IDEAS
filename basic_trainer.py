@@ -10,10 +10,9 @@ import scipy
 
 
 class BasicTrainer:
-    def __init__(self, model, epoch_threshold = 150, model_name='IDEAS', use_SAM=1, epochs=200, learning_rate=0.002, batch_size=200, lr_scheduler=None, lr_step_size=125, log_interval=5, 
+    def __init__(self, model, model_name='IDEAS', use_SAM=1, epochs=200, learning_rate=0.002, batch_size=200, lr_scheduler=None, lr_step_size=125, log_interval=5, 
                      device='cuda'):
         self.model = model
-        self.epoch_threshold = epoch_threshold
         self.model_name = model_name
         self.epochs = epochs
         self.learning_rate = learning_rate

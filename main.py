@@ -145,7 +145,6 @@ if __name__ == "__main__":
 
     # create a trainer
     trainer = basic_trainer.BasicTrainer(model, model_name=args.model,
-                                            epoch_threshold = args.epoch_threshold,
                                             epochs=args.epochs,
                                             learning_rate=args.lr,
                                             batch_size=args.batch_size,
