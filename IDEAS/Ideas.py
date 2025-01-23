@@ -206,6 +206,7 @@ class IDEAS(nn.Module):
 
         self.matrixP.fill_diagonal_(0)
         self.matrixP = self.matrixP.clamp(min = 1e-4)
+        return self.matrixP
 
         # norms = torch.norm(minibatch_embeddings, dim=1, keepdim=True).clamp(min=1e-6)
         # P = torch.mm(minibatch_embeddings, minibatch_embeddings.t()) / (norms * norms.t() + 1e-6)
