@@ -195,8 +195,8 @@ class IDEAS(nn.Module):
         
         for i in range(num_minibatch):
             for j in range(num_minibatch):
-                e_i = self.minibatch_embeddings[i]
-                e_j = self.minibatch_embeddings[j]
+                e_i = minibatch_embeddings[i]
+                e_j = minibatch_embeddings[j]
                 
                 norm_i = torch.norm(e_i).clamp(min=1e-6)  
                 norm_j = torch.norm(e_j).clamp(min=1e-6)  
