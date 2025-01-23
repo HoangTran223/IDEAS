@@ -33,7 +33,10 @@ def add_model_argument(parser):
     parser.add_argument('--alpha_TP', type=float, default=20.)
     parser.add_argument('--weight_loss_TP', type=float, default=250.)
     parser.add_argument('--weight_loss_DT_ETP', type=float, default=250.)
+    parser.add_argument('--threshold_cl', type=float, default=0.5)
     #
+
+    
 
     parser.add_argument('--beta_temp', type=float, default=0.2)
     parser.add_argument('--render', type=int, default=0)
@@ -56,16 +59,6 @@ def add_training_argument(parser):
                             currently support: step')
     parser.add_argument('--lr_step_size', type=int, default=125,
                         help='step size for learning rate scheduler')
-
-    # FSAM
-    parser.add_argument('--rho', type=float, default=0.05,
-                         help='rho')
-    parser.add_argument('--sigma', type=float, default=1,
-                        help='sigma') 
-    parser.add_argument('--lmbda', type=float, default=0.9,
-                        help='lmbda') 
-    parser.add_argument('--acc_step', type=float, default=8,
-                        help='acc_step') 
 
 
 def save_config(args, path):

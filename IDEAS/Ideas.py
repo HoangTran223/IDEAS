@@ -4,6 +4,7 @@ from torch import nn
 import torch.nn.functional as F
 from .ECR import ECR
 #from .GR import GR
+from .CL import CL
 from .DT_ETP import DT_ETP
 from .TP import TP
 import torch_kmeans
@@ -16,7 +17,7 @@ class IDEAS(nn.Module):
                  cluster_distribution=None, cluster_mean=None, cluster_label=None, 
                  pretrained_WE=None, embed_size=200, beta_temp=0.2, num_documents=None,
                  weight_loss_ECR=250.0, weight_loss_TP = 250.0, alpha_TP = 20.0,
-                 DT_alpha: float=3.0, weight_loss_DT_ETP = 10.0, 
+                 DT_alpha: float=3.0, weight_loss_DT_ETP = 10.0, threshold_cl = 0.5,
                  alpha_GR=20.0, alpha_ECR=20.0, sinkhorn_alpha = 20.0, sinkhorn_max_iter=1000):
         super().__init__()
 
@@ -64,10 +65,6 @@ class IDEAS(nn.Module):
         
 
         ##
-        # self.doc_embeddings = torch.empty((num_documents, num_documents))
-        # # nn.init.trunc_normal_(self.doc_embeddings, std=0.1)
-        # # self.doc_embeddings = nn.Parameter(F.normalize(self.doc_embeddings))
-        # self.doc_embeddings = nn.Parameter(F.normalize(self.doc_embeddings, p=2, dim=1, eps=1e-8))
         self.matrixP = None
         self.DT_ETP = DT_ETP(weight_loss_DT_ETP, DT_alpha)
 
@@ -77,6 +74,8 @@ class IDEAS(nn.Module):
         # self.doc_embeddings = nn.Parameter(
         #     torch.randn((self.num_documents, self.num_documents))
         # )
+        self.group_topic = None
+        self.sub_cluster = None
 
         print(f"chieuX cua doc_embeddings {len(self.doc_embeddings)}")
         print(f"chieuY cua doc_embeddings : {len(self.doc_embeddings[0])}")
@@ -86,6 +85,55 @@ class IDEAS(nn.Module):
                                        nn.Dropout(dropout))
         ##
 
+    def create_group_topic(self):
+        # Step 1: Hierarchical Agglomerative Clustering (HAC) to find large clusters
+        distances = torch.cdist(self.topic_embeddings, self.topic_embeddings, p=2)  # Euclidean distance
+        distances = distances.numpy()
+
+        # Dùng linkage để thực hiện HAC
+        Z = linkage(distances, method='ward')  # Phương pháp 'ward' cho HAC
+
+        # Chia thành số cụm lớn (num_groups)
+        group_id = fcluster(Z, t=self.num_groups, criterion='maxclust')
+        
+        # Step 2: Tạo sub-clusters trong mỗi nhóm lớn sử dụng K-means
+        self.group_topic = [[] for _ in range(self.num_groups)]
+        for i in range(self.num_topics):
+            self.group_topic[group_id[i] - 1].append(i)  # Lưu topic vào mỗi nhóm lớn
+
+        # Step 3: Tạo sub-clusters trong mỗi nhóm lớn
+        self.sub_cluster = {}
+        for group_idx, topics in enumerate(self.group_topic):
+            sub_embeddings = self.topic_embeddings[topics]  # Lấy embedding của các topic trong nhóm lớn
+            kmean_model = KMeans(n_clusters=min(3, len(topics)), max_iter=1000, verbose=False)
+            sub_group_id = kmean_model.fit_predict(sub_embeddings.cpu().detach().numpy())  # Phân nhóm con trong mỗi cụm lớn
+
+            self.sub_cluster[group_idx] = {}
+            for sub_idx, topic_idx in enumerate(topics):
+                self.sub_cluster[group_idx].setdefault(sub_group_id[sub_idx], []).append(topic_idx)
+        print(self.sub_cluster)
+        
+    def get_contrastive_loss(self):
+        loss_cl = 0.0
+        for group_idx, sub_clusters in self.sub_cluster.items():
+            for sub_group_id, topics in sub_clusters.items():
+                embeddings = self.topic_embeddings[topics]
+                
+                # Tính cosine similarity giữa các embedding trong cùng một sub-cluster
+                similarity_matrix = torch.mm(embeddings, embeddings.T)
+                norm_embeddings = torch.norm(embeddings, p=2, dim=1, keepdim=True)
+                similarity_matrix = similarity_matrix / (norm_embeddings * norm_embeddings.T)
+
+                # Tính loss: Nếu sim > threshold, coi là positive pair, ngược lại là negative pair
+                for i in range(similarity_matrix.shape[0]):
+                    for j in range(i + 1, similarity_matrix.shape[1]):
+                        sim = similarity_matrix[i, j]
+                        if sim > threshold_cl:  # Positive pair
+                            loss_cl += F.relu(1 - sim)  # Loss cho positive pair
+                        else:  # Negative pair
+                            loss_cl += F.relu(sim)  # Loss cho negative pair
+        return loss_cl
+        
 
     def get_beta(self):
         dist = self.pairwise_euclidean_distance(
@@ -147,45 +195,6 @@ class IDEAS(nn.Module):
             torch.sum(y ** 2, dim=1) - 2 * torch.matmul(x, y.t())
         return cost
 
-    
-    # def create_matrixP(self):
-    #     self.matrixP = torch.ones(
-    #         (self.num_documents, self.num_documents), device=self.topic_embeddings.device) / 5.
-
-    #     for i in range(self.num_documents):
-    #         for j in range(self.num_documents):
-    #             e_i = self.doc_embeddings[i]
-    #             e_j = self.doc_embeddings[j]
-                
-    #             norm_i = torch.norm(e_i).clamp(min=1e-6)  
-    #             norm_j = torch.norm(e_j).clamp(min=1e-6)  
-                
-    #             p_ij = torch.dot(e_i, e_j) / (norm_i * norm_j)
-    #             self.matrixP[i, j] = p_ij
-
-    #     self.matrixP = self.matrixP.clamp(min = 1e-6)
-    #     return self.matrixP
-
-
-    # def get_loss_TP(self):
-    #     cost = self.pairwise_euclidean_distance(
-    #                 self.doc_embeddings, self.doc_embeddings) + \
-    #                     1e1 * torch.ones(self.num_documents, self.num_documents).cuda()
-
-    #     self.matrixP = self.create_matrixP()
-    #     # norms = torch.norm(self.doc_embeddings, dim=1, keepdim=True).clamp(min=1e-6) 
-    #     # P = torch.mm(self.doc_embeddings, self.doc_embeddings.t()) / (norms * norms.t() + 1e-4)  # cosine similarity
-    #     # P = P / (norms * norms.t()) 
-    #     # P = (P + P.T) / 2  # Symmetric matrix
-        
-    #     if torch.isnan(cost).any():
-    #         print("cost contains NaN values!")
-    #     if torch.isnan(matrixP).any():
-    #         print("matrixP contains NaN values!")
-
-    #     loss_TP = self.TP(cost, self.matrixP)
-    #     return loss_TP
-
 
     def create_matrixP(self, minibatch_indices):
         num_minibatch = len(minibatch_indices)
@@ -193,23 +202,6 @@ class IDEAS(nn.Module):
         self.matrixP = torch.ones(
             (num_minibatch, num_minibatch), device=self.topic_embeddings.device) / num_minibatch
         
-        # for i in range(num_minibatch):
-        #     for j in range(num_minibatch):
-        #         e_i = minibatch_embeddings[i]
-        #         e_j = minibatch_embeddings[j]
-                
-        #         norm_i = torch.norm(e_i).clamp(min=1e-6)  
-        #         norm_j = torch.norm(e_j).clamp(min=1e-6)  
-                
-        #         p_ij = torch.dot(e_i, e_j) / (norm_i * norm_j)
-        #         self.matrixP[i, j] = p_ij
-        # self.matrixP.fill_diagonal_(0)
-        # self.matrixP = self.matrixP.clamp(min = 1e-4)
-
-        # norms = torch.norm(minibatch_embeddings, dim=1, keepdim=True).clamp(min=1e-6)
-        # P = torch.mm(minibatch_embeddings, minibatch_embeddings.t()) / (norms * norms.t() + 1e-6)
-        # P = (P + P.T) / 2  # Symmetric matrix
-        # P = P / P.sum(dim=1, keepdim=True) 
         norm_embeddings = minibatch_embeddings / (torch.norm(minibatch_embeddings, dim=1, keepdim=True).clamp(min=1e-6))
         self.matrixP = torch.matmul(norm_embeddings, norm_embeddings.T)
         self.matrixP.fill_diagonal_(0)
@@ -253,21 +245,40 @@ class IDEAS(nn.Module):
         loss_ECR = self.get_loss_ECR()
         loss_TP = self.get_loss_TP(indices)
         loss_DT_ETP = self.get_loss_DT_ETP()
+        loss_cl = self.get_contrastive_loss()
 
         #loss = loss_TM + loss_ECR + loss_DT_ETP
-        loss = loss_TM + loss_ECR + loss_TP + loss_DT_ETP
+        loss = loss_TM + loss_ECR + loss_TP + loss_DT_ETP + loss_cl
         rst_dict = {
             'loss': loss,
             'loss_TM': loss_TM,
             'loss_ECR': loss_ECR,
             'loss_DT_ETP': loss_DT_ETP,
-            'loss_TP': loss_TP
+            'loss_TP': loss_TP,
+            'loss_cl': loss_cl
         }
 
         return rst_dict
 
 
-    
+
+    # for i in range(num_minibatch):
+    #     for j in range(num_minibatch):
+    #         e_i = minibatch_embeddings[i]
+    #         e_j = minibatch_embeddings[j]
+            
+    #         norm_i = torch.norm(e_i).clamp(min=1e-6)  
+    #         norm_j = torch.norm(e_j).clamp(min=1e-6)  
+            
+    #         p_ij = torch.dot(e_i, e_j) / (norm_i * norm_j)
+    #         self.matrixP[i, j] = p_ij
+    # self.matrixP.fill_diagonal_(0)
+    # self.matrixP = self.matrixP.clamp(min = 1e-4)
+
+    # norms = torch.norm(minibatch_embeddings, dim=1, keepdim=True).clamp(min=1e-6)
+    # P = torch.mm(minibatch_embeddings, minibatch_embeddings.t()) / (norms * norms.t() + 1e-6)
+    # P = (P + P.T) / 2  # Symmetric matrix
+    # P = P / P.sum(dim=1, keepdim=True) 
 
     # def get_loss_GR(self):
     #     cost = self.pairwise_euclidean_distance(

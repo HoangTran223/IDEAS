@@ -95,7 +95,8 @@ class BasicTrainer:
 
                 self.logger.info(output_log)
 
-            print(f"loss_TP: {loss_rst_dict['loss_TP']}, loss_TM: {loss_rst_dict['loss_TM']}, loss_ECR: {loss_rst_dict['loss_ECR']}, loss_DT_ETP: {loss_rst_dict['loss_DT_ETP']}'\n")
+            print(f"loss_TP: {loss_rst_dict['loss_TP']}, loss_TM: {loss_rst_dict['loss_TM']}, loss_cl: {loss_rst_dict['loss_cl']} \
+                 loss_ECR: {loss_rst_dict['loss_ECR']}, loss_DT_ETP: {loss_rst_dict['loss_DT_ETP']}'\n")
 
     def test(self, input_data, train_data=None):
         data_size = input_data.shape[0]

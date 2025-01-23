@@ -133,6 +133,7 @@ if __name__ == "__main__":
                         alpha_ECR=args.alpha_ECR,
                         alpha_GR=args.alpha_GR,
                         beta_temp=args.beta_temp,
+                        threshold_cl=args.threshold_cl,
                         num_documents=num_documents)       
 
     model.weight_loss_DT_ETP = args.weight_loss_DT_ETP
