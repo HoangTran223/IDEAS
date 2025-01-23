@@ -188,12 +188,13 @@ class IDEAS(nn.Module):
 
 
     def create_matrixP(self, minibatch_indices):
+        num_minibatch = len(minibatch_indices)
         minibatch_embeddings = self.doc_embeddings[minibatch_indices]
         self.matrixP = torch.ones(
-            (minibatch_indices, minibatch_indices), device=self.topic_embeddings.device) / minibatch_indices
+            (num_minibatch, num_minibatch), device=self.topic_embeddings.device) / num_minibatch
         
-        for i in range(minibatch_indices):
-            for j in range(minibatch_indices):
+        for i in range(num_minibatch):
+            for j in range(num_minibatch):
                 e_i = self.minibatch_embeddings[i]
                 e_j = self.minibatch_embeddings[j]
                 
