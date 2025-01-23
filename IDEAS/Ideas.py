@@ -210,7 +210,7 @@ class IDEAS(nn.Module):
         # P = torch.mm(minibatch_embeddings, minibatch_embeddings.t()) / (norms * norms.t() + 1e-6)
         # P = (P + P.T) / 2  # Symmetric matrix
         # P = P / P.sum(dim=1, keepdim=True) 
-        norms = minibatch_embeddings / (torch.norm(minibatch_embeddings, dim=1, keepdim=True).clamp(min=1e-6))
+        norm_embeddings = minibatch_embeddings / (torch.norm(minibatch_embeddings, dim=1, keepdim=True).clamp(min=1e-6))
         self.matrixP = torch.matmul(norm_embeddings, norm_embeddings.T)
         self.matrixP.fill_diagonal_(0)
         self.matrixP = self.matrixP.clamp(min=1e-4)
