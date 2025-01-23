@@ -113,7 +113,6 @@ class IDEAS(nn.Module):
             self.sub_cluster[group_idx] = {}
             for sub_idx, topic_idx in enumerate(topics):
                 self.sub_cluster[group_idx].setdefault(sub_group_id[sub_idx], []).append(topic_idx)
-        print(self.sub_cluster)
         
     def get_contrastive_loss(self):
         loss_cl = 0.0
