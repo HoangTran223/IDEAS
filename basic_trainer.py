@@ -53,6 +53,7 @@ class BasicTrainer:
 
         return top_words, train_theta
 
+    self.model.create_group_topic()
     def train(self, dataset_handler, verbose=False):
         adam_optimizer = self.make_adam_optimizer()
 

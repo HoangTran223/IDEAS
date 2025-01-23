@@ -233,8 +233,8 @@ class IDEAS(nn.Module):
 
 
     def forward(self, indices, input, epoch_id=None):
-        if self.sub_cluster is None:
-            self.create_group_topic()
+        # if self.sub_cluster is None:
+        #     self.create_group_topic()
 
         bow = input[0]
         contextual_emb = input[1]
