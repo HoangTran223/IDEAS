@@ -61,7 +61,6 @@ class BasicTrainer:
             self.logger.info("===>using lr_scheduler")
             lr_scheduler = self.make_lr_scheduler(adam_optimizer)
 
-        num_documents = len(dataset_handler.train_dataloader.dataset)
         data_size = len(dataset_handler.train_dataloader.dataset)
 
         for epoch_id, epoch in enumerate(tqdm(range(1, self.epochs + 1))):
@@ -96,7 +95,7 @@ class BasicTrainer:
 
                 self.logger.info(output_log)
 
-            print(f"loss_TP: {loss_rst_dict['loss_TP']}, loss_TM: {loss_rst_dict['loss_TM']}, loss_ECR: {loss_rst_dict['loss_ECR']} \n")
+            print(f"loss_TP: {loss_rst_dict['loss_TP']}, loss_TM: {loss_rst_dict['loss_TM']}, loss_ECR: {loss_rst_dict['loss_ECR']}, loss_DT_ETP: {loss_rst_dict['loss_DT_ETP']}'\n")
 
     def test(self, input_data, train_data=None):
         data_size = input_data.shape[0]
