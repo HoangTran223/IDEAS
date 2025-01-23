@@ -89,7 +89,7 @@ class IDEAS(nn.Module):
     def create_group_topic(self):
         # Step 1: Hierarchical Agglomerative Clustering (HAC) to find large clusters
         distances = torch.cdist(self.topic_embeddings, self.topic_embeddings, p=2)  # Euclidean distance
-        distances = distances.numpy()
+        distances = distances.cpu().numpy()
 
         # Dùng linkage để thực hiện HAC
         Z = linkage(distances, method='ward')  # Phương pháp 'ward' cho HAC
@@ -136,7 +136,7 @@ class IDEAS(nn.Module):
                 #             loss_cl += F.relu(sim)  # Loss cho negative pair
                 sim = similarity_matrix[torch.triu_indices(similarity_matrix.shape[0], similarity_matrix.shape[1], offset=1)]
                 loss_cl += torch.sum(F.relu(self.threshold_cl - sim))
-                
+
         return loss_cl
         
 
