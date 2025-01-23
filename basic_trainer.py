@@ -26,7 +26,7 @@ class BasicTrainer:
         self.logger = logging.getLogger('main')
 
         ##
-        self.model.create_group_topic()
+        #self.model.create_group_topic()
         ##
 
     def make_adam_optimizer(self,):

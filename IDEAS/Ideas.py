@@ -107,7 +107,7 @@ class IDEAS(nn.Module):
         self.sub_cluster = {}
         for group_idx, topics in enumerate(self.group_topic):
             sub_embeddings = self.topic_embeddings[topics]  # Lấy embedding của các topic trong nhóm lớn
-            kmean_model = KMeans(n_clusters=min(3, len(topics)), max_iter=1000, verbose=False)
+            kmean_model = KMeans(n_clusters=min(3, len(topics)), max_iter=1000, verbose=False, n_init='auto')
             sub_group_id = kmean_model.fit_predict(sub_embeddings.cpu().detach().numpy())  # Phân nhóm con trong mỗi cụm lớn
 
             self.sub_cluster[group_idx] = {}
@@ -234,7 +234,7 @@ class IDEAS(nn.Module):
 
     def forward(self, indices, input, epoch_id=None):
         # if self.sub_cluster is None:
-        #     self.create_group_topic()
+        self.create_group_topic()
 
         bow = input[0]
         contextual_emb = input[1]
