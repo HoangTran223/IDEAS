@@ -75,7 +75,7 @@ class IDEAS(nn.Module):
         #     torch.randn((self.num_documents, self.num_documents))
         # )
         self.group_topic = None
-        self.sub_cluster = None
+        self.sub_cluster = {}
 
         print(f"chieuX cua doc_embeddings {len(self.doc_embeddings)}")
         print(f"chieuY cua doc_embeddings : {len(self.doc_embeddings[0])}")
@@ -102,7 +102,6 @@ class IDEAS(nn.Module):
             self.group_topic[group_id[i] - 1].append(i)  # Lưu topic vào mỗi nhóm lớn
 
         # Step 3: Tạo sub-clusters trong mỗi nhóm lớn
-        self.sub_cluster = {}
         for group_idx, topics in enumerate(self.group_topic):
             sub_embeddings = self.topic_embeddings[topics]  # Lấy embedding của các topic trong nhóm lớn
             kmean_model = KMeans(n_clusters=min(3, len(topics)), max_iter=1000, verbose=False)
@@ -117,6 +116,8 @@ class IDEAS(nn.Module):
         loss_cl = 0.0
         for group_idx, sub_clusters in self.sub_cluster.items():
             for sub_group_id, topics in sub_clusters.items():
+                if len(topics) <= 1:
+                    continue
                 embeddings = self.topic_embeddings[topics]
                 
                 # Tính cosine similarity giữa các embedding trong cùng một sub-cluster
@@ -227,6 +228,8 @@ class IDEAS(nn.Module):
 
 
     def forward(self, indices, input, epoch_id=None):
+        if self.sub_cluster is None:
+            self.create_group_topic()
 
         bow = input[0]
         contextual_emb = input[1]
