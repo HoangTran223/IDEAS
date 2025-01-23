@@ -21,6 +21,7 @@ class IDEAS(nn.Module):
                  alpha_GR=20.0, alpha_ECR=20.0, sinkhorn_alpha = 20.0, sinkhorn_max_iter=1000):
         super().__init__()
 
+        self.threshold_cl = threshold_cl
         self.num_documents = num_documents
         self.num_topics = num_topics
         self.num_groups = num_groups
@@ -75,7 +76,7 @@ class IDEAS(nn.Module):
         #     torch.randn((self.num_documents, self.num_documents))
         # )
         self.group_topic = None
-        self.sub_cluster = {}
+        self.sub_cluster = None
 
         print(f"chieuX cua doc_embeddings {len(self.doc_embeddings)}")
         print(f"chieuY cua doc_embeddings : {len(self.doc_embeddings[0])}")
@@ -102,6 +103,7 @@ class IDEAS(nn.Module):
             self.group_topic[group_id[i] - 1].append(i)  # Lưu topic vào mỗi nhóm lớn
 
         # Step 3: Tạo sub-clusters trong mỗi nhóm lớn
+        self.sub_cluster = {}
         for group_idx, topics in enumerate(self.group_topic):
             sub_embeddings = self.topic_embeddings[topics]  # Lấy embedding của các topic trong nhóm lớn
             kmean_model = KMeans(n_clusters=min(3, len(topics)), max_iter=1000, verbose=False)
@@ -121,18 +123,20 @@ class IDEAS(nn.Module):
                 embeddings = self.topic_embeddings[topics]
                 
                 # Tính cosine similarity giữa các embedding trong cùng một sub-cluster
-                similarity_matrix = torch.mm(embeddings, embeddings.T)
                 norm_embeddings = torch.norm(embeddings, p=2, dim=1, keepdim=True)
-                similarity_matrix = similarity_matrix / (norm_embeddings * norm_embeddings.T)
+                similarity_matrix = torch.mm(embeddings, embeddings.T) / (norm_embeddings * norm_embeddings.T)
 
                 # Tính loss: Nếu sim > threshold, coi là positive pair, ngược lại là negative pair
-                for i in range(similarity_matrix.shape[0]):
-                    for j in range(i + 1, similarity_matrix.shape[1]):
-                        sim = similarity_matrix[i, j]
-                        if sim > self.threshold_cl:  # Positive pair
-                            loss_cl += F.relu(1 - sim)  # Loss cho positive pair
-                        else:  # Negative pair
-                            loss_cl += F.relu(sim)  # Loss cho negative pair
+                # for i in range(similarity_matrix.shape[0]):
+                #     for j in range(i + 1, similarity_matrix.shape[1]):
+                #         sim = similarity_matrix[i, j]
+                #         if sim > self.threshold_cl:  # Positive pair
+                #             loss_cl += F.relu(1 - sim)  # Loss cho positive pair
+                #         else:  # Negative pair
+                #             loss_cl += F.relu(sim)  # Loss cho negative pair
+                sim = similarity_matrix[torch.triu_indices(similarity_matrix.shape[0], similarity_matrix.shape[1], offset=1)]
+                loss_cl += torch.sum(F.relu(self.threshold_cl - sim))
+                
         return loss_cl
         
 
