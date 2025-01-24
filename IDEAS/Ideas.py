@@ -62,7 +62,6 @@ class IDEAS(nn.Module):
         nn.init.trunc_normal_(self.topic_embeddings, std=0.1)
         self.topic_embeddings = nn.Parameter(F.normalize(self.topic_embeddings))
 
-        self.num_topics_per_group = num_topics // num_groups
         self.ECR = ECR(weight_loss_ECR, alpha_ECR, sinkhorn_max_iter)
         
 
@@ -85,6 +84,10 @@ class IDEAS(nn.Module):
 
         self.document_emb_prj = nn.Sequential(nn.Linear(self.num_documents, self.word_embeddings.shape[1] ),
                                        nn.Dropout(dropout))
+        self.topic_top_words = {}
+        self.word_embeddings_dict = {}
+        for idx in range(vocab_size):
+            self.word_embeddings_dict[f"word_{idx}"] = self.word_embeddings[idx].detach().cpu().numpy()
         ##
 
     def create_group_topic(self):
@@ -99,6 +102,7 @@ class IDEAS(nn.Module):
         group_id = fcluster(Z, t=self.num_groups, criterion='maxclust')
         
         # Step 2: Tạo sub-clusters trong mỗi nhóm lớn sử dụng K-means
+        # num_groups = num_topics
         self.group_topic = [[] for _ in range(self.num_groups)]
         for i in range(self.num_topics):
             self.group_topic[group_id[i] - 1].append(i)  # Lưu topic vào mỗi nhóm lớn
@@ -106,10 +110,14 @@ class IDEAS(nn.Module):
         # Step 3: Tạo sub-clusters trong mỗi nhóm lớn
         self.sub_cluster = {}
         for group_idx, topics in enumerate(self.group_topic):
-            sub_embeddings = self.topic_embeddings[topics]  # Lấy embedding của các topic trong nhóm lớn
-            kmean_model = KMeans(n_clusters=min(3, len(topics)), max_iter=1000, verbose=False, n_init='auto')
-            sub_group_id = kmean_model.fit_predict(sub_embeddings.cpu().detach().numpy())  # Phân nhóm con trong mỗi cụm lớn
+            sub_embeddings = self.topic_embeddings[topics]  
+            # kmean_model = KMeans(n_clusters=max(1, len(topics)), max_iter=1000, verbose=False, n_init='auto')
+            # sub_group_id = kmean_model.fit_predict(sub_embeddings.cpu().detach().numpy())  # Phân nhóm con trong mỗi cụm lớn
 
+            sub_distances = torch.cdist(sub_embeddings, sub_embeddings, p=2).detach().cpu().numpy() 
+            sub_Z = linkage(sub_distances, method='ward')
+            sub_group_id = fcluster(sub_Z, criterion='inconsistent')
+            
             self.sub_cluster[group_idx] = {}
             for sub_idx, topic_idx in enumerate(topics):
                 self.sub_cluster[group_idx].setdefault(sub_group_id[sub_idx], []).append(topic_idx)
@@ -147,7 +155,67 @@ class IDEAS(nn.Module):
                 loss_cl += loss_pos + loss_neg
 
         return loss_cl
-        
+    
+
+    def init_topic_top_words(self, top_words_dict):
+        self.topic_top_words = top_words_dict
+
+    def get_contrastive_loss_large_clusters(self):
+
+        loss_cl_large = 0.0
+        for i, group_i in enumerate(self.group_topic):
+            for j, group_j in enumerate(self.group_topic):
+                if i >= j:  
+                    continue
+
+                top15_i = self.get_top_words(group_i, top_k=15)  
+                top15_j = self.get_top_words(group_j, top_k=15) 
+
+                similarity_matrix = self.compute_similarity(top15_i, top15_j)
+
+                # Tính độ tương đồng trung bình
+                sim_avg = similarity_matrix.mean()
+
+                if sim_avg > self.threshold_cl:
+                    loss_cl_large += F.relu(1 - sim_avg)
+                else:
+                    loss_cl_large += F.relu(sim_avg - self.threshold_cl)
+
+        return loss_cl_large
+
+    def get_top_words(self, group_topics, top_k=15):
+        """
+        Lấy top-k từ của các topic trong một cụm.
+        """
+        top_words = []
+        for topic in group_topics:
+            top_words.extend(self.topic_top_words[topic][:top_k])  
+        return top_words
+
+    def compute_similarity(self, top_words_i, top_words_j):
+        """
+        Tính ma trận similarity giữa hai tập từ.
+        """
+        similarity_matrix = []
+        for word_i in top_words_i:
+            row = []
+            for word_j in top_words_j:
+                sim = self.word_similarity(word_i, word_j)  # Tính độ tương đồng giữa hai từ
+                row.append(sim)
+            similarity_matrix.append(row)
+        return torch.tensor(similarity_matrix)
+
+    def word_similarity(self, word1, word2):
+        """
+        Tính độ tương đồng giữa hai từ.
+        """
+        if word1 in self.word_embeddings_dict and word2 in self.word_embeddings_dict:
+            vec1 = self.word_embeddings_dict[word1]
+            vec2 = self.word_embeddings_dict[word2]
+            sim = F.cosine_similarity(torch.tensor(vec1), torch.tensor(vec2), dim=0)
+            return sim.item()
+        return 0.0
+
 
     def get_beta(self):
         dist = self.pairwise_euclidean_distance(
@@ -262,16 +330,18 @@ class IDEAS(nn.Module):
         loss_TP = self.get_loss_TP(indices)
         loss_DT_ETP = self.get_loss_DT_ETP()
         loss_cl = self.get_contrastive_loss()
+        loss_cl_large = self.get_contrastive_loss_large_clusters()
 
         #loss = loss_TM + loss_ECR + loss_DT_ETP
-        loss = loss_TM + loss_ECR + loss_TP + loss_DT_ETP + loss_cl
+        loss = loss_TM + loss_ECR + loss_TP + loss_DT_ETP + loss_cl + loss_cl_large
         rst_dict = {
             'loss': loss,
             'loss_TM': loss_TM,
             'loss_ECR': loss_ECR,
             'loss_DT_ETP': loss_DT_ETP,
             'loss_TP': loss_TP,
-            'loss_cl': loss_cl
+            'loss_cl': loss_cl,
+            'loss_cl_large': loss_cl_large
         }
 
         return rst_dict
