@@ -175,7 +175,7 @@ class IDEAS(nn.Module):
     def init_topic_top_words(self, vocab, top_words_dict, num_top_words = 15):
         self.topic_top_words = self.export_top_words(vocab, num_top_words)
     
-    def get_contrastive_loss_large_clusters(sinit_topic_top_wordself):
+    def get_contrastive_loss_large_clusters(self):
 
         loss_cl_large = 0.0
         for i, group_i in enumerate(self.group_topic):
