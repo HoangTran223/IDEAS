@@ -99,7 +99,7 @@ class BasicTrainer:
                 self.logger.info(output_log)
 
             print(f"loss_TP: {loss_rst_dict['loss_TP']}, loss_TM: {loss_rst_dict['loss_TM']}, loss_cl: {loss_rst_dict['loss_cl']} \
-                 loss_ECR: {loss_rst_dict['loss_ECR']}, loss_DT_ETP: {loss_rst_dict['loss_DT_ETP']}'\n")
+                 loss_ECR: {loss_rst_dict['loss_ECR']}, loss_DT_ETP: {loss_rst_dict['loss_DT_ETP']}, loss_cl_large: {loss_rst_dict['loss_cl_large']}'\n")
         print(f"self.sub_cluster: {self.model.sub_cluster}\n")
 
     def test(self, input_data, train_data=None):

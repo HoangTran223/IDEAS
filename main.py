@@ -134,6 +134,7 @@ if __name__ == "__main__":
                         alpha_GR=args.alpha_GR,
                         beta_temp=args.beta_temp,
                         threshold_cl=args.threshold_cl,
+                        vocab=dataset.vocab,
                         num_documents=num_documents)       
 
     model.weight_loss_DT_ETP = args.weight_loss_DT_ETP
