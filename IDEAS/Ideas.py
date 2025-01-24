@@ -96,10 +96,12 @@ class IDEAS(nn.Module):
         self.document_emb_prj = nn.Sequential(nn.Linear(self.num_documents, self.word_embeddings.shape[1] ),
                                        nn.Dropout(dropout))
         self.topic_top_words = {}
+        
         self.word_embeddings_dict = {
-            f"word_{idx}": self.word_embeddings[idx].detach().cpu().numpy()
-            for idx in range(vocab_size)
+            word: self.word_embeddings[idx].detach().cpu().numpy()
+            for idx, word in enumerate(self.vocab)
         }
+
 
     def create_group_topic(self):
         if self.num_topics == 0 or self.num_groups == 0:
@@ -110,7 +112,7 @@ class IDEAS(nn.Module):
         distances = distances.detach().cpu().numpy()
 
         # Dùng linkage để thực hiện HAC
-        Z = linkage(distances, method='ward')  # Phương pháp 'ward' cho HAC
+        Z = linkage(distances, method='ward') 
 
         # Chia thành số cụm lớn (num_groups)
         group_id = fcluster(Z, t=self.num_groups, criterion='maxclust')
@@ -137,7 +139,8 @@ class IDEAS(nn.Module):
             self.sub_cluster[group_idx] = {}
             for sub_idx, topic_idx in enumerate(topics):
                 self.sub_cluster[group_idx].setdefault(sub_group_id[sub_idx], []).append(topic_idx)
-        
+    
+
     def get_contrastive_loss(self):
         loss_cl = 0.0
         for group_idx, sub_clusters in self.sub_cluster.items():
@@ -149,24 +152,13 @@ class IDEAS(nn.Module):
                 # Tính cosine similarity giữa các embedding trong cùng một sub-cluster
                 norm_embeddings = F.normalize(embeddings, p=2, dim=1)
                 similarity_matrix = torch.mm(norm_embeddings, norm_embeddings.T)
-
-                # Tính loss: Nếu sim > threshold, coi là positive pair, ngược lại là negative pair
-                # for i in range(similarity_matrix.shape[0]):
-                #     for j in range(i + 1, similarity_matrix.shape[1]):
-                #         sim = similarity_matrix[i, j]
-                #         if sim > self.threshold_cl:  # Positive pair
-                #             loss_cl += F.relu(1 - sim)  # Loss cho positive pair
-                #         else:  # Negative pair
-                #             loss_cl += F.relu(sim)  # Loss cho negative pair
-                # sim = similarity_matrix[torch.triu_indices(similarity_matrix.shape[0], similarity_matrix.shape[1], offset=1)]
-                # loss_cl += torch.sum(F.relu(self.threshold_cl - sim))
                 
                 positive_pairs = similarity_matrix[similarity_matrix >= self.threshold_cl]
                 negative_pairs = similarity_matrix[similarity_matrix < self.threshold_cl]
 
                 # Tính loss
-                loss_pos = torch.sum(F.relu(1 - positive_pairs))  # Positive pairs
-                loss_neg = torch.sum(F.relu(negative_pairs - self.threshold_cl))  # Negative pairs
+                loss_pos = torch.sum(F.relu(1 - positive_pairs)) 
+                loss_neg = torch.sum(F.relu(negative_pairs - self.threshold_cl))  
                 loss_cl += loss_pos + loss_neg
 
         loss_cl *= self.weight_loss_cl
@@ -175,37 +167,21 @@ class IDEAS(nn.Module):
     
     def get_top_words(self, vocab, group_index, num_top_words=15):
         beta = self.get_beta().detach().cpu().numpy()
-
-        if len(group_index) == 0:
-            print("Warning: group_index is empty!")
-            return []
-
         group_beta = beta[group_index]
         top_words = []
-        for topic_dist in group_beta:
-            if len(topic_dist) == 0:
-                print("Warning: topic_dist is empty!")
-                continue
 
-            topic_words = np.array(vocab)[np.argsort(topic_dist)][:-(num_top_words + 1):-1]
+        for topic_dist in group_beta:
+            top_indices = np.argsort(topic_dist)[-num_top_words:][::-1]
+            #topic_words = np.array(self.vocab)[np.argsort(topic_dist)][:-(num_top_words + 1):-1]
+            topic_words = [self.vocab[idx] for idx in top_indices]
             top_words.extend(topic_words)
 
-        if not top_words:
-            print("Warning: No top words found!")
         return top_words
-
-
-    # def init_topic_top_words(self, vocab, top_words_dict, num_top_words = 15):
-    #     beta = self.get_beta().detach().cpu().numpy()  # Xuất beta từ mô hình
-    #     self.topic_top_words = static_utils.print_topic_words(beta, vocab, num_top_words)
     
+
     def get_contrastive_loss_large_clusters(self):
 
         loss_cl_large = 0.0
-        if not self.group_topic:
-            print("Group topic is empty!")
-            return loss_cl_large
-
         for i, group_i in enumerate(self.group_topic):
             for j in range(i + 1, len(self.group_topic)):
                 group_j = self.group_topic[j]
@@ -213,16 +189,10 @@ class IDEAS(nn.Module):
                 top15_i = self.get_top_words(self.vocab, group_i)  
                 top15_j = self.get_top_words(self.vocab, group_j) 
 
-                if not top15_i or not top15_j:
-                    print(f"No top words for groups {i} or {j}")
-                    continue
-
                 similarity_matrix = self.compute_similarity(top15_i, top15_j)
 
                 # Tính độ tương đồng trung bình
                 sim_avg = similarity_matrix.mean()
-                print(f"Group {i}-{j} similarity average: {sim_avg}")
-
                 if sim_avg > self.threshold_cl_large:
                     loss_cl_large += F.relu(1 - sim_avg)
                 else:
@@ -236,26 +206,9 @@ class IDEAS(nn.Module):
                             if word in self.word_embeddings_dict])
         vec_j = torch.stack([torch.tensor(self.word_embeddings_dict[word]) for word in top_words_j 
                             if word in self.word_embeddings_dict])
-        
-        if len(vec_i) == 0 or len(vec_j) == 0:
-            print("Warning: No valid embeddings found for similarity computation!")
-            return torch.zeros(1, device=self.topic_embeddings.device)
 
-        with torch.no_grad():
-            similarity_matrix = F.cosine_similarity(vec_i.unsqueeze(1), vec_j.unsqueeze(0), dim=2)
+        similarity_matrix = F.cosine_similarity(vec_i, vec_j, dim=2)
         return similarity_matrix
-
-
-    # def word_similarity(self, word1, word2):
-    #     """
-    #     Tính độ tương đồng giữa hai từ.
-    #     """
-    #     if word1 in self.word_embeddings_dict and word2 in self.word_embeddings_dict:
-    #         vec1 = self.word_embeddings_dict[word1]
-    #         vec2 = self.word_embeddings_dict[word2]
-    #         sim = F.cosine_similarity(torch.tensor(vec1), torch.tensor(vec2), dim=0)
-    #         return sim.item()
-    #     return 0.0
 
 
     def get_beta(self):
@@ -300,7 +253,6 @@ class IDEAS(nn.Module):
         diff = mu - self.mu2
         diff_term = diff * diff / self.var2
         logvar_division = self.var2.log() - logvar
-        # KLD: N*K
         KLD = 0.5 * ((var_division + diff_term +
                      logvar_division).sum(axis=1) - self.num_topics)
         KLD = KLD.mean()
@@ -350,14 +302,9 @@ class IDEAS(nn.Module):
 
 
     def forward(self, indices, input, epoch_id=None):
-        print(f"Sample word embeddings keys: {list(self.word_embeddings_dict.keys())[:5]}")
-        print(f"Size of word_embeddings_dict: {len(self.word_embeddings_dict)}")    
 
         if self.sub_cluster is None or (epoch_id is not None and epoch_id % 5 == 0):
             self.create_group_topic()
-
-        # if epoch_id is not None and epoch_id > 1 and not self.topic_top_words:
-        #     self.init_topic_top_words(self.vocab, self.top_words_dict)
 
         bow = input[0]
         contextual_emb = input[1]
@@ -385,8 +332,6 @@ class IDEAS(nn.Module):
             else:
                 loss_cl_large = self.get_contrastive_loss_large_clusters()
             
-
-        #loss = loss_TM + loss_ECR + loss_DT_ETP
         loss = loss_TM + loss_ECR + loss_TP + loss_DT_ETP + loss_cl + loss_cl_large
         rst_dict = {
             'loss': loss,
@@ -403,6 +348,23 @@ class IDEAS(nn.Module):
 
 
 
+
+
+    
+    # Tính loss: Nếu sim > threshold, coi là positive pair, ngược lại là negative pair
+    # for i in range(similarity_matrix.shape[0]):
+    #     for j in range(i + 1, similarity_matrix.shape[1]):
+    #         sim = similarity_matrix[i, j]
+    #         if sim > self.threshold_cl:  # Positive pair
+    #             loss_cl += F.relu(1 - sim)  # Loss cho positive pair
+    #         else:  # Negative pair
+    #             loss_cl += F.relu(sim)  # Loss cho negative pair
+    # sim = similarity_matrix[torch.triu_indices(similarity_matrix.shape[0], similarity_matrix.shape[1], offset=1)]
+    # loss_cl += torch.sum(F.relu(self.threshold_cl - sim))
+
+    # def init_topic_top_words(self, vocab, top_words_dict, num_top_words = 15):
+    #     beta = self.get_beta().detach().cpu().numpy()  # Xuất beta từ mô hình
+    #     self.topic_top_words = static_utils.print_topic_words(beta, vocab, num_top_words)
 
     # def compute_similarity(self, top_words_i, top_words_j):
     #     """
@@ -459,26 +421,6 @@ class IDEAS(nn.Module):
     # P = torch.mm(minibatch_embeddings, minibatch_embeddings.t()) / (norms * norms.t() + 1e-6)
     # P = (P + P.T) / 2  # Symmetric matrix
     # P = P / P.sum(dim=1, keepdim=True) 
-
-    # def get_loss_GR(self):
-    #     cost = self.pairwise_euclidean_distance(
-    #         self.topic_embeddings, self.topic_embeddings) + 1e1 * torch.ones(self.num_topics, self.num_topics).cuda()
-    #     loss_GR = self.GR(cost, self.group_connection_regularizer)
-    #     return loss_GR
-
-    # # Add OT
-    # self.cluster_mean = nn.Parameter(torch.from_numpy(cluster_mean).float(), requires_grad=False)
-    # self.cluster_distribution = nn.Parameter(torch.from_numpy(cluster_distribution).float(), requires_grad=False)
-    # self.cluster_label = cluster_label
-    # if not isinstance(self.cluster_label, torch.Tensor):
-    #     self.cluster_label = torch.tensor(self.cluster_label, dtype=torch.long, device='cuda')
-    # else:
-    #     self.cluster_label = self.cluster_label.to(device='cuda', dtype=torch.long)
-    
-    # self.map_t2c = nn.Linear(self.word_embeddings.shape[1], self.cluster_mean.shape[1], bias=False)
-    # self.OT = OT(weight_loss_OT, sinkhorn_alpha, sinkhorn_max_iter)
-    # #
-
 
     # def create_group_connection_regularizer(self):
     #     kmean_model = torch_kmeans.KMeans(
