@@ -116,8 +116,8 @@ class IDEAS(nn.Module):
 
             sub_distances = torch.cdist(sub_embeddings, sub_embeddings, p=2).detach().cpu().numpy() 
             sub_Z = linkage(sub_distances, method='ward')
-            sub_group_id = fcluster(sub_Z, criterion='inconsistent')
-            
+            sub_group_id = fcluster(sub_Z, t = 0.5, criterion='inconsistent')
+
             self.sub_cluster[group_idx] = {}
             for sub_idx, topic_idx in enumerate(topics):
                 self.sub_cluster[group_idx].setdefault(sub_group_id[sub_idx], []).append(topic_idx)
