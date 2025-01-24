@@ -320,7 +320,7 @@ class IDEAS(nn.Module):
             self.create_group_topic()
 
         if epoch_id is not None and epoch_id > 1 and not self.topic_top_words:
-            self.init_topic_top_words(top_words_dict)
+            self.init_topic_top_words(self.vocab, top_words_dict)
 
         bow = input[0]
         contextual_emb = input[1]
