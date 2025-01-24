@@ -69,7 +69,7 @@ class IDEAS(nn.Module):
         
 
         ##
-        self.top_words_dict = None
+        self.top_words_dict = {}
         self.vocab = vocab
         self.matrixP = None
         self.DT_ETP = DT_ETP(weight_loss_DT_ETP, DT_alpha)
