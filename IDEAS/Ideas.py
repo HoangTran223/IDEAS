@@ -20,12 +20,13 @@ class IDEAS(nn.Module):
     def __init__(self, vocab_size, data_name = '20NG', num_topics=50, num_groups=10, en_units=200, dropout=0.,
                  cluster_distribution=None, cluster_mean=None, cluster_label=None, 
                  pretrained_WE=None, embed_size=200, beta_temp=0.2, num_documents=None,
-                 weight_loss_ECR=250.0, weight_loss_TP = 250.0, alpha_TP = 20.0,
+                 weight_loss_ECR=250.0, weight_loss_TP = 250.0, alpha_TP = 20.0, threshold_cl_large = 0.5
                  DT_alpha: float=3.0, weight_loss_DT_ETP = 10.0, threshold_cl = 0.5, vocab = None,
                  alpha_GR=20.0, alpha_ECR=20.0, sinkhorn_alpha = 20.0, sinkhorn_max_iter=1000):
         super().__init__()
 
         self.threshold_cl = threshold_cl
+        self.threshold_cl_large = threshold_cl_large
         self.num_documents = num_documents
         self.num_topics = num_topics
         self.num_groups = num_groups
@@ -115,7 +116,7 @@ class IDEAS(nn.Module):
         for group_idx, topics in enumerate(self.group_topic):
             sub_embeddings = self.topic_embeddings[topics]  
             kmean_model = KMeans(n_clusters=max(1, len(topics)), max_iter=1000, verbose=False, n_init='auto')
-            sub_group_id = kmean_model.fit_predict(sub_embeddings.cpu().detach().numpy())  # Phân nhóm con trong mỗi cụm lớn
+            sub_group_id = kmean_model.fit_predict(sub_embeddings.cpu().detach().numpy()) 
 
             # if len(sub_embeddings) < 2:
             #     self.sub_cluster[group_idx] = {0: topics}  # Gán nhóm con là chính nó

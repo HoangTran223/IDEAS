@@ -134,6 +134,7 @@ if __name__ == "__main__":
                         alpha_GR=args.alpha_GR,
                         beta_temp=args.beta_temp,
                         threshold_cl=args.threshold_cl,
+                        threshold_cl_large=args.threshold_cl_large,
                         vocab=dataset.vocab,
                         num_documents=num_documents)       
 
