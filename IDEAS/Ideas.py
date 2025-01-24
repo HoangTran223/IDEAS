@@ -172,7 +172,7 @@ class IDEAS(nn.Module):
         top_words = static_utils.print_topic_words(beta, vocab, num_top_words)
         return top_words
 
-    def init_topic_top_words(self, vocab, top_words_dict):
+    def init_topic_top_words(self, vocab, top_words_dict, num_top_words = 15):
         beta = self.get_beta().detach().cpu().numpy()  # Xuất beta từ mô hình
         self.topic_top_words = self.export_top_words(beta, vocab, num_top_words)
     
