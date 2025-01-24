@@ -203,10 +203,15 @@ class IDEAS(nn.Module):
 
     def compute_similarity(self, top_words_i, top_words_j):
 
-        vec_i = torch.stack([torch.tensor(self.word_embeddings_dict[word]) for word in top_words_i 
-                            if word in self.word_embeddings_dict])
-        vec_j = torch.stack([torch.tensor(self.word_embeddings_dict[word]) for word in top_words_j 
-                            if word in self.word_embeddings_dict])
+        # vec_i = torch.stack([torch.tensor(self.word_embeddings_dict[word]) for word in top_words_i 
+        #                     if word in self.word_embeddings_dict])
+        # vec_j = torch.stack([torch.tensor(self.word_embeddings_dict[word]) for word in top_words_j 
+        #                     if word in self.word_embeddings_dict])
+        vec_i = torch.stack([self.word_embeddings[self.vocab.index(word)] for word in top_words_i 
+                    if word in self.vocab])
+        vec_j = torch.stack([self.word_embeddings[self.vocab.index(word)] for word in top_words_j 
+                    if word in self.vocab])
+
         print(f"vec_i shape: {vec_i.shape}, vec_j shape: {vec_j.shape}")
 
         similarity_matrix = F.cosine_similarity(vec_i, vec_j, dim=2)
