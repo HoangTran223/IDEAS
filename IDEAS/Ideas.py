@@ -114,6 +114,10 @@ class IDEAS(nn.Module):
             # kmean_model = KMeans(n_clusters=max(1, len(topics)), max_iter=1000, verbose=False, n_init='auto')
             # sub_group_id = kmean_model.fit_predict(sub_embeddings.cpu().detach().numpy())  # Phân nhóm con trong mỗi cụm lớn
 
+            if len(sub_embeddings) < 2:
+                self.sub_cluster[group_idx] = {0: topics}  # Gán nhóm con là chính nó
+                continue
+            
             sub_distances = torch.cdist(sub_embeddings, sub_embeddings, p=2).detach().cpu().numpy() 
             sub_Z = linkage(sub_distances, method='ward')
             sub_group_id = fcluster(sub_Z, t = 0.5, criterion='inconsistent')
