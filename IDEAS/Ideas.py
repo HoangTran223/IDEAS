@@ -202,12 +202,12 @@ class IDEAS(nn.Module):
         return loss_cl_large
 
     def compute_similarity(self, top_words_i, top_words_j):
-        print(f"vec_i shape: {vec_i.shape}, vec_j shape: {vec_j.shape}")
 
         vec_i = torch.stack([torch.tensor(self.word_embeddings_dict[word]) for word in top_words_i 
                             if word in self.word_embeddings_dict])
         vec_j = torch.stack([torch.tensor(self.word_embeddings_dict[word]) for word in top_words_j 
                             if word in self.word_embeddings_dict])
+        print(f"vec_i shape: {vec_i.shape}, vec_j shape: {vec_j.shape}")
 
         similarity_matrix = F.cosine_similarity(vec_i, vec_j, dim=2)
         return similarity_matrix
