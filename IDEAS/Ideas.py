@@ -120,7 +120,7 @@ class IDEAS(nn.Module):
         self.sub_cluster = {}
         for group_idx, topics in enumerate(self.group_topic):
             sub_embeddings = self.topic_embeddings[topics]  
-            kmean_model = KMeans(n_clusters=max(1, len(topics)), max_iter=1000, verbose=False, n_init='auto')
+            kmean_model = KMeans(n_clusters=min(3, len(topics)), max_iter=1000, verbose=False, n_init='auto')
             sub_group_id = kmean_model.fit_predict(sub_embeddings.cpu().detach().numpy()) 
 
             # if len(sub_embeddings) < 2:
