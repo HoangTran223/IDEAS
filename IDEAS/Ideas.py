@@ -181,8 +181,8 @@ class IDEAS(nn.Module):
                 if i >= j:  
                     continue
 
-                top15_i = self.get_top_words(group_i, top_k=15)  
-                top15_j = self.get_top_words(group_j, top_k=15) 
+                top15_i = self.get_top_words(group_i, )  
+                top15_j = self.get_top_words(group_j, ) 
 
                 similarity_matrix = self.compute_similarity(top15_i, top15_j)
 
