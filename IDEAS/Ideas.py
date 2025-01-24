@@ -173,10 +173,10 @@ class IDEAS(nn.Module):
         for topic_dist in group_beta:
             top_indices = np.argsort(topic_dist)[-num_top_words:][::-1]
             #topic_words = np.array(self.vocab)[np.argsort(topic_dist)][:-(num_top_words + 1):-1]
-            topic_words = [self.vocab[idx] for idx in top_indices]
+            topic_words = [self.vocab[idx] for idx in top_indices if self.vocab[idx] in self.vocab]
             top_words.extend(topic_words)
 
-        return top_words
+        return top_words[:num_top_words]
     
 
     def get_contrastive_loss_large_clusters(self):
@@ -214,7 +214,7 @@ class IDEAS(nn.Module):
 
         print(f"vec_i shape: {vec_i.shape}, vec_j shape: {vec_j.shape}")
 
-        similarity_matrix = F.cosine_similarity(vec_i, vec_j, dim=2)
+        similarity_matrix = F.cosine_similarity(vec_i, vec_j, dim=-1)
         return similarity_matrix
 
 
