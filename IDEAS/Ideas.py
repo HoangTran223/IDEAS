@@ -165,7 +165,7 @@ class IDEAS(nn.Module):
     
     def get_top_words(self, vocab, num_top_words=15):
         beta = self.get_beta().detach().cpu().numpy()
-        group_beta = beta[group_topics]
+        group_beta = beta[self.group_topic]
         top_words = static_utils.print_topic_words(group_beta, self.vocab, num_top_words)
         return top_words
 
