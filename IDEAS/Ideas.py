@@ -172,11 +172,23 @@ class IDEAS(nn.Module):
     
     def get_top_words(self, vocab, group_index, num_top_words=15):
         beta = self.get_beta().detach().cpu().numpy()
+
+        if len(group_index) == 0:
+            print("Warning: group_index is empty!")
+            return []
+
         group_beta = beta[group_index]
         top_words = []
         for topic_dist in group_beta:
+            if len(topic_dist) == 0:
+                print("Warning: topic_dist is empty!")
+                continue
+
             topic_words = np.array(vocab)[np.argsort(topic_dist)][:-(num_top_words + 1):-1]
             top_words.extend(topic_words)
+
+        if not top_words:
+            print("Warning: No top words found!")
         return top_words
 
 
@@ -221,6 +233,9 @@ class IDEAS(nn.Module):
                             if word in self.word_embeddings_dict])
         vec_j = torch.stack([torch.tensor(self.word_embeddings_dict[word]) for word in top_words_j 
                             if word in self.word_embeddings_dict])
+        
+        if not vec_i or not vec_j:
+            print("Warning: No valid embeddings found in top_words!")
 
         with torch.no_grad():
             similarity_matrix = F.cosine_similarity(vec_i.unsqueeze(1), vec_j.unsqueeze(0), dim=2)
