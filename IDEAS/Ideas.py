@@ -241,7 +241,7 @@ class IDEAS(nn.Module):
 
 
     def forward(self, indices, input, epoch_id=None):
-        if self.sub_cluster is None or (epoch_id is not None and epoch_id % 50 == 0):
+        if self.sub_cluster is None or (epoch_id is not None and epoch_id % 500 == 0):
             self.create_group_topic()
 
         bow = input[0]
