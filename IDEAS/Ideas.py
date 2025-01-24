@@ -173,28 +173,40 @@ class IDEAS(nn.Module):
     def get_top_words(self, vocab, group_index, num_top_words=15):
         beta = self.get_beta().detach().cpu().numpy()
         group_beta = beta[group_index]
-        top_words = static_utils.print_topic_words(group_beta, self.vocab, num_top_words)
+        top_words = []
+        for topic_dist in group_beta:
+            topic_words = np.array(vocab)[np.argsort(topic_dist)][:-(num_top_words + 1):-1]
+            top_words.extend(topic_words)
         return top_words
 
-    def init_topic_top_words(self, vocab, top_words_dict, num_top_words = 15):
-        beta = self.get_beta().detach().cpu().numpy()  # Xuất beta từ mô hình
-        self.topic_top_words = static_utils.print_topic_words(beta, vocab, num_top_words)
+
+    # def init_topic_top_words(self, vocab, top_words_dict, num_top_words = 15):
+    #     beta = self.get_beta().detach().cpu().numpy()  # Xuất beta từ mô hình
+    #     self.topic_top_words = static_utils.print_topic_words(beta, vocab, num_top_words)
     
     def get_contrastive_loss_large_clusters(self):
 
         loss_cl_large = 0.0
+        if not self.group_topic:
+            print("Group topic is empty!")
+            return loss_cl_large
+
         for i, group_i in enumerate(self.group_topic):
-            for j, group_j in enumerate(self.group_topic):
-                if i >= j:  
-                    continue
+            for j in range(i + 1, len(self.group_topic)):
+                group_j = self.group_topic[j]
 
                 top15_i = self.get_top_words(self.vocab, group_i)  
                 top15_j = self.get_top_words(self.vocab, group_j) 
+
+                if not top15_i or not top15_j:
+                    print(f"No top words for groups {i} or {j}")
+                    continue
 
                 similarity_matrix = self.compute_similarity(top15_i, top15_j)
 
                 # Tính độ tương đồng trung bình
                 sim_avg = similarity_matrix.mean()
+                print(f"Group {i}-{j} similarity average: {sim_avg}")
 
                 if sim_avg > self.threshold_cl_large:
                     loss_cl_large += F.relu(1 - sim_avg)
@@ -205,28 +217,26 @@ class IDEAS(nn.Module):
         return loss_cl_large
 
     def compute_similarity(self, top_words_i, top_words_j):
-        """
-        Tính ma trận similarity giữa hai tập từ.
-        """
-        similarity_matrix = []
-        for word_i in top_words_i:
-            row = []
-            for word_j in top_words_j:
-                sim = self.word_similarity(word_i, word_j)  # Tính độ tương đồng giữa hai từ
-                row.append(sim)
-            similarity_matrix.append(row)
-        return torch.tensor(similarity_matrix)
+        vec_i = torch.stack([torch.tensor(self.word_embeddings_dict[word]) for word in top_words_i 
+                            if word in self.word_embeddings_dict])
+        vec_j = torch.stack([torch.tensor(self.word_embeddings_dict[word]) for word in top_words_j 
+                            if word in self.word_embeddings_dict])
 
-    def word_similarity(self, word1, word2):
-        """
-        Tính độ tương đồng giữa hai từ.
-        """
-        if word1 in self.word_embeddings_dict and word2 in self.word_embeddings_dict:
-            vec1 = self.word_embeddings_dict[word1]
-            vec2 = self.word_embeddings_dict[word2]
-            sim = F.cosine_similarity(torch.tensor(vec1), torch.tensor(vec2), dim=0)
-            return sim.item()
-        return 0.0
+        with torch.no_grad():
+            similarity_matrix = F.cosine_similarity(vec_i.unsqueeze(1), vec_j.unsqueeze(0), dim=2)
+        return similarity_matrix
+
+
+    # def word_similarity(self, word1, word2):
+    #     """
+    #     Tính độ tương đồng giữa hai từ.
+    #     """
+    #     if word1 in self.word_embeddings_dict and word2 in self.word_embeddings_dict:
+    #         vec1 = self.word_embeddings_dict[word1]
+    #         vec2 = self.word_embeddings_dict[word2]
+    #         sim = F.cosine_similarity(torch.tensor(vec1), torch.tensor(vec2), dim=0)
+    #         return sim.item()
+    #     return 0.0
 
 
     def get_beta(self):
@@ -348,7 +358,10 @@ class IDEAS(nn.Module):
 
         loss_cl_large = 0.0
         if epoch_id is not None and epoch_id > 1 and self.weight_loss_cl_large != 0:
-            loss_cl_large = self.get_contrastive_loss_large_clusters()
+            if not self.group_topic:
+                print("Warning: group_topic is empty!")
+            else:
+                loss_cl_large = self.get_contrastive_loss_large_clusters()
             
 
         #loss = loss_TM + loss_ECR + loss_DT_ETP
@@ -366,6 +379,21 @@ class IDEAS(nn.Module):
         return rst_dict
 
 
+
+
+
+    # def compute_similarity(self, top_words_i, top_words_j):
+    #     """
+    #     Tính ma trận similarity giữa hai tập từ.
+    #     """
+    #     similarity_matrix = []
+    #     for word_i in top_words_i:
+    #         row = []
+    #         for word_j in top_words_j:
+    #             sim = self.word_similarity(word_i, word_j)  # Tính độ tương đồng giữa hai từ
+    #             row.append(sim)
+    #         similarity_matrix.append(row)
+    #     return torch.tensor(similarity_matrix)
 
 
     # def get_top_words(self, topic_id, top_k=15):
