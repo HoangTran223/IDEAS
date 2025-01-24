@@ -22,11 +22,11 @@ class IDEAS(nn.Module):
                  pretrained_WE=None, embed_size=200, beta_temp=0.2, num_documents=None,
                  weight_loss_ECR=250.0, weight_loss_TP = 250.0, alpha_TP = 20.0, threshold_cl_large = 0.5,
                  DT_alpha: float=3.0, weight_loss_DT_ETP = 10.0, threshold_cl = 0.5, vocab = None,
+                 weight_loss_cl = 1.0, weight_loss_cl_large = 1.0,
                  alpha_GR=20.0, alpha_ECR=20.0, sinkhorn_alpha = 20.0, sinkhorn_max_iter=1000):
         super().__init__()
 
-        self.threshold_cl = threshold_cl
-        self.threshold_cl_large = threshold_cl_large
+        
         self.num_documents = num_documents
         self.num_topics = num_topics
         self.num_groups = num_groups
@@ -70,6 +70,11 @@ class IDEAS(nn.Module):
         
 
         ##
+        self.weight_loss_cl = weight_loss_cl
+        self.weight_loss_cl_large = weight_loss_cl_large
+        self.threshold_cl = threshold_cl
+        self.threshold_cl_large = threshold_cl_large
+
         self.top_words_dict = {}
         self.vocab = vocab
         self.matrixP = None
@@ -161,6 +166,7 @@ class IDEAS(nn.Module):
                 loss_neg = torch.sum(F.relu(negative_pairs - self.threshold_cl))  # Negative pairs
                 loss_cl += loss_pos + loss_neg
 
+        loss_cl *= self.weight_loss_cl
         return loss_cl
 
     
@@ -195,6 +201,7 @@ class IDEAS(nn.Module):
                 else:
                     loss_cl_large += F.relu(sim_avg - self.threshold_cl_large)
 
+        loss_cl_large *= self.weight_loss_cl_large
         return loss_cl_large
 
     def compute_similarity(self, top_words_i, top_words_j):
@@ -314,7 +321,7 @@ class IDEAS(nn.Module):
 
 
     def forward(self, indices, input, epoch_id=None):
-        if self.sub_cluster is None or (epoch_id is not None and (epoch_id == 1 or epoch_id % 500 == 0)):
+        if self.sub_cluster is None or (epoch_id is not None and epoch_id % 5 == 0):
             self.create_group_topic()
 
         # if epoch_id is not None and epoch_id > 1 and not self.topic_top_words:
@@ -340,8 +347,9 @@ class IDEAS(nn.Module):
         loss_cl = self.get_contrastive_loss()
 
         loss_cl_large = 0.0
-        if epoch_id is not None and epoch_id > 1:
+        if epoch_id is not None and epoch_id > 1 and self.weight_loss_cl_large != 0:
             loss_cl_large = self.get_contrastive_loss_large_clusters()
+            
 
         #loss = loss_TM + loss_ECR + loss_DT_ETP
         loss = loss_TM + loss_ECR + loss_TP + loss_DT_ETP + loss_cl + loss_cl_large

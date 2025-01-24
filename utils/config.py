@@ -35,6 +35,8 @@ def add_model_argument(parser):
     parser.add_argument('--weight_loss_DT_ETP', type=float, default=250.)
     parser.add_argument('--threshold_cl', type=float, default=0.5)
     parser.add_argument('--threshold_cl_large', type=float, default=0.5)
+    parser.add_argument('--weight_loss_cl', type=float, default=2.)
+    parser.add_argument('--weight_loss_cl_large', type=float, default=1.)
     #
 
     

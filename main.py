@@ -136,6 +136,8 @@ if __name__ == "__main__":
                         threshold_cl=args.threshold_cl,
                         threshold_cl_large=args.threshold_cl_large,
                         vocab=dataset.vocab,
+                        weight_loss_cl = args.weight_loss_cl,
+                        weight_loss_cl_large=args.weight_loss_cl_large,
                         num_documents=num_documents)       
 
     model.weight_loss_DT_ETP = args.weight_loss_DT_ETP
