@@ -102,6 +102,9 @@ class IDEAS(nn.Module):
         }
 
     def create_group_topic(self):
+        if self.num_topics == 0 or self.num_groups == 0:
+            print("Warning: num_topics or num_groups is zero!")
+            return
 
         distances = torch.cdist(self.topic_embeddings, self.topic_embeddings, p=2)  
         distances = distances.detach().cpu().numpy()
@@ -234,8 +237,9 @@ class IDEAS(nn.Module):
         vec_j = torch.stack([torch.tensor(self.word_embeddings_dict[word]) for word in top_words_j 
                             if word in self.word_embeddings_dict])
         
-        if not vec_i or not vec_j:
-            print("Warning: No valid embeddings found in top_words!")
+        if len(vec_i) == 0 or len(vec_j) == 0:
+            print("Warning: No valid embeddings found for similarity computation!")
+            return torch.zeros(1, device=self.topic_embeddings.device)
 
         with torch.no_grad():
             similarity_matrix = F.cosine_similarity(vec_i.unsqueeze(1), vec_j.unsqueeze(0), dim=2)
