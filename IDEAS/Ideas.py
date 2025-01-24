@@ -163,9 +163,9 @@ class IDEAS(nn.Module):
         return loss_cl
 
     
-    def get_top_words(self, vocab, num_top_words=15):
+    def get_top_words(self, vocab, group_index, num_top_words=15):
         beta = self.get_beta().detach().cpu().numpy()
-        group_beta = beta[self.group_topic]
+        group_beta = beta[group_index]
         top_words = static_utils.print_topic_words(group_beta, self.vocab, num_top_words)
         return top_words
 
@@ -181,8 +181,8 @@ class IDEAS(nn.Module):
                 if i >= j:  
                     continue
 
-                top15_i = self.get_top_words(group_i, )  
-                top15_j = self.get_top_words(group_j, ) 
+                top15_i = self.get_top_words(self.vocab, group_i)  
+                top15_j = self.get_top_words(self.vocab, group_j) 
 
                 similarity_matrix = self.compute_similarity(top15_i, top15_j)
 
@@ -316,8 +316,8 @@ class IDEAS(nn.Module):
         if self.sub_cluster is None or (epoch_id is not None and epoch_id % 500 == 0):
             self.create_group_topic()
 
-        if epoch_id is not None and epoch_id > 1 and not self.topic_top_words:
-            self.init_topic_top_words(self.vocab, self.top_words_dict)
+        # if epoch_id is not None and epoch_id > 1 and not self.topic_top_words:
+        #     self.init_topic_top_words(self.vocab, self.top_words_dict)
 
         bow = input[0]
         contextual_emb = input[1]
