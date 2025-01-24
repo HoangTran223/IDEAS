@@ -187,14 +187,29 @@ class IDEAS(nn.Module):
 
         return loss_cl_large
 
-    def get_top_words(self, group_topics, top_k=15):
+    def get_top_words(self, topic_id, top_k=15):
         """
-        Lấy top-k từ của các topic trong một cụm.
+        Lấy top-k từ từ topic embeddings, dựa trên độ tương đồng giữa các embeddings.
         """
+        topic_embedding = self.topic_embeddings[topic_id]  # Lấy embedding của topic
+
+        # Tính cosine similarity giữa topic_embedding và tất cả các topic khác
+        similarities = []
+        for other_topic_id, other_embedding in self.topic_embeddings.items():
+            sim = F.cosine_similarity(topic_embedding, other_embedding, dim=0)
+            similarities.append((other_topic_id, sim.item()))
+
+        # Sắp xếp và lấy top-k topic tương đồng
+        similarities.sort(key=lambda x: x[1], reverse=True)
+        top_topics = [topic for topic, _ in similarities[:top_k]]
+
+        # Lấy từ top-k của các topic tương ứng
         top_words = []
-        for topic in group_topics:
-            top_words.extend(self.topic_top_words[topic][:top_k])  
+        for topic in top_topics:
+            top_words.extend(self.topic_top_words[topic][:top_k])
+
         return top_words
+
 
     def compute_similarity(self, top_words_i, top_words_j):
         """
@@ -315,7 +330,9 @@ class IDEAS(nn.Module):
     def forward(self, indices, input, epoch_id=None):
         if self.sub_cluster is None or (epoch_id is not None and epoch_id % 500 == 0):
             self.create_group_topic()
-
+        if top_words_dict is not None:
+            self.init_topic_top_words(top_words_dict)
+            
         bow = input[0]
         contextual_emb = input[1]
 
