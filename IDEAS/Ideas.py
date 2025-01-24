@@ -212,7 +212,7 @@ class IDEAS(nn.Module):
         vec_j = torch.stack([self.word_embeddings[self.vocab.index(word)] for word in top_words_j 
                     if word in self.vocab])
 
-        print(f"vec_i shape: {vec_i.shape}, vec_j shape: {vec_j.shape}")
+        #print(f"vec_i shape: {vec_i.shape}, vec_j shape: {vec_j.shape}")
 
         similarity_matrix = F.cosine_similarity(vec_i, vec_j, dim=-1)
         return similarity_matrix
