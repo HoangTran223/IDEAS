@@ -20,7 +20,7 @@ class IDEAS(nn.Module):
     def __init__(self, vocab_size, data_name = '20NG', num_topics=50, num_groups=10, en_units=200, dropout=0.,
                  cluster_distribution=None, cluster_mean=None, cluster_label=None, 
                  pretrained_WE=None, embed_size=200, beta_temp=0.2, num_documents=None,
-                 weight_loss_ECR=250.0, weight_loss_TP = 250.0, alpha_TP = 20.0, threshold_cl_large = 0.5
+                 weight_loss_ECR=250.0, weight_loss_TP = 250.0, alpha_TP = 20.0, threshold_cl_large = 0.5,
                  DT_alpha: float=3.0, weight_loss_DT_ETP = 10.0, threshold_cl = 0.5, vocab = None,
                  alpha_GR=20.0, alpha_ECR=20.0, sinkhorn_alpha = 20.0, sinkhorn_max_iter=1000):
         super().__init__()
@@ -190,10 +190,10 @@ class IDEAS(nn.Module):
                 # Tính độ tương đồng trung bình
                 sim_avg = similarity_matrix.mean()
 
-                if sim_avg > self.threshold_cl:
+                if sim_avg > self.threshold_cl_large:
                     loss_cl_large += F.relu(1 - sim_avg)
                 else:
-                    loss_cl_large += F.relu(sim_avg - self.threshold_cl)
+                    loss_cl_large += F.relu(sim_avg - self.threshold_cl_large)
 
         return loss_cl_large
 
