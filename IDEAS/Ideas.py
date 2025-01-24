@@ -350,6 +350,9 @@ class IDEAS(nn.Module):
 
 
     def forward(self, indices, input, epoch_id=None):
+        print(f"Sample word embeddings keys: {list(self.word_embeddings_dict.keys())[:5]}")
+        print(f"Size of word_embeddings_dict: {len(self.word_embeddings_dict)}")    
+
         if self.sub_cluster is None or (epoch_id is not None and epoch_id % 5 == 0):
             self.create_group_topic()
 
