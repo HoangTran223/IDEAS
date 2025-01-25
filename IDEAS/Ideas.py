@@ -141,7 +141,7 @@ class IDEAS(nn.Module):
     #             self.sub_cluster[group_idx].setdefault(sub_group_id[sub_idx], []).append(topic_idx)
     
 
-    def create_group_topic_op2(self):
+    def create_group_topic(self):
         # Bước 1: Sử dụng KMeans để tạo các cụm lớn (num_groups)
         kmeans = KMeans(n_clusters=self.num_groups, max_iter=2000, verbose=False, n_init=10)
         group_id = kmeans.fit_predict(self.topic_embeddings.cpu().detach().numpy())
@@ -171,38 +171,6 @@ class IDEAS(nn.Module):
             self.sub_cluster[group_idx] = {}
             for sub_idx, topic_idx in enumerate(topics):
                 self.sub_cluster[group_idx].setdefault(sub_group_id[sub_idx] - 1, []).append(topic_idx)
-
-
-    # Options 2: num_groups = num_topics
-    def create_group_topic(self):
-        # Bước 1: Sử dụng KMeans để tạo các cụm lớn (num_groups)
-        kmeans = KMeans(n_clusters=self.num_groups, max_iter=2000, verbose=False, n_init=10)
-        group_id = kmeans.fit_predict(self.topic_embeddings.cpu().detach().numpy())
-        print("Unique cluster IDs:", len(set(group_id)))
-
-
-        self.group_topic = [[] for _ in range(self.num_groups)]
-        for i in range(self.num_topics):
-            self.group_topic[group_id[i]].append(i) 
-
-        # Bước 2: Tạo các cụm con trong từng cụm lớn bằng HAC
-        self.sub_cluster = {}
-        for group_idx, topics in enumerate(self.group_topic):
-
-            sub_embeddings = self.topic_embeddings[topics]
-            sub_distances = torch.cdist(sub_embeddings, sub_embeddings, p=2).detach().cpu().numpy()
-
-            # Dùng linkage để thực hiện HAC
-            sub_Z = linkage(sub_distances, method='ward')
-
-            sub_group_id = fcluster(sub_Z, t=2, criterion='distance')
-
-            self.sub_cluster[group_idx] = {}
-            for sub_idx, topic_idx in enumerate(topics):
-                self.sub_cluster[group_idx].setdefault(sub_group_id[sub_idx] - 1, []).append(topic_idx)
-            
-            print(f"Group {group_idx} has {len(self.sub_cluster[group_idx])} sub-clusters")
-
 
 
     def get_contrastive_loss(self):
