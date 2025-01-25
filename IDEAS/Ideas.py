@@ -117,7 +117,21 @@ class IDEAS(nn.Module):
         Z = linkage(distances, method='ward') 
 
         # Chia thành số cụm lớn
-        group_id = fcluster(Z, t=0.5, criterion='distance')
+        # group_id = fcluster(Z, t=0.5, criterion='distance')
+
+        best_score = -1
+        best_num_groups = 0
+        for num_clusters in range(2, 11):  # thử với số cụm từ 2 đến 10
+            group_id = fcluster(Z, t=num_clusters, criterion='maxclust')
+
+            # Tính silhouette score
+            score = silhouette_score(distances, group_id, metric='precomputed')
+            if score > best_score:
+                best_score = score
+                best_num_groups = num_clusters
+
+        print(f"Best number of groups: {best_num_groups} with silhouette score: {best_score}")
+        group_id = fcluster(Z, t=best_num_groups, criterion='maxclust')
         
         self.group_topic = [[] for _ in range(self.num_groups)]
         for i in range(self.num_topics):
@@ -136,7 +150,21 @@ class IDEAS(nn.Module):
 
             sub_distances = torch.cdist(sub_embeddings, sub_embeddings, p=2).detach().cpu().numpy() 
             sub_Z = linkage(sub_distances, method='ward')
-            sub_group_id = fcluster(sub_Z, t = 0.5, criterion='distance')
+
+            best_sub_score = -1
+            best_sub_clusters = 0
+            for num_sub_clusters in range(2, 6):  # thử với số sub-clusters từ 2 đến 5
+                sub_group_id = fcluster(sub_Z, t=num_sub_clusters, criterion='maxclust')
+                sub_score = silhouette_score(sub_distances, sub_group_id, metric='precomputed')
+                if sub_score > best_sub_score:
+                    best_sub_score = sub_score
+                    best_sub_clusters = num_sub_clusters
+
+            print(f"Best sub-clusters for group {group_idx}: {best_sub_clusters} with silhouette score: {best_sub_score}")
+
+            # Chia thành số sub-clusters tốt nhất
+            sub_group_id = fcluster(sub_Z, t=best_sub_clusters, criterion='maxclust')
+            # sub_group_id = fcluster(sub_Z, t = 0.5, criterion='distance')
 
             self.sub_cluster[group_idx] = {}
             for sub_idx, topic_idx in enumerate(topics):
