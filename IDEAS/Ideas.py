@@ -124,7 +124,7 @@ class IDEAS(nn.Module):
 
         best_score = -1
         best_num_groups = 0
-        for num_clusters in range(1, 11):  # thử với số cụm từ 1 đến 10
+        for num_clusters in range(2, 11):  # thử với số cụm từ 2 đến 10
             group_id = fcluster(Z, t=num_clusters, criterion='maxclust')
 
             # Tính silhouette score
