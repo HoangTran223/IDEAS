@@ -17,7 +17,7 @@ def add_model_argument(parser):
     parser.add_argument('--use_SAM', type=int, help='use SAM')
     parser.add_argument('--SAM_name', type=str, help='SAM Variant')
     parser.add_argument('--num_topics', type=int, default=50)
-    parser.add_argument('--num_groups', type=int, default=20)
+    parser.add_argument('--num_groups', type=int, default=50)
     parser.add_argument('--dropout', type=float, default=0.2)
     parser.add_argument('--use_pretrainWE', action='store_true',
                         default=False, help='Enable use_pretrainWE mode')

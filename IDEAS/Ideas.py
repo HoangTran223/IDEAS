@@ -17,7 +17,7 @@ from sklearn.cluster import KMeans
 from utils import static_utils
 
 class IDEAS(nn.Module):
-    def __init__(self, vocab_size, data_name = '20NG', num_topics=50, num_groups=10, en_units=200, dropout=0.,
+    def __init__(self, vocab_size, data_name = '20NG', num_topics=50, num_groups=50, en_units=200, dropout=0.,
                  cluster_distribution=None, cluster_mean=None, cluster_label=None, 
                  pretrained_WE=None, embed_size=200, beta_temp=0.2, num_documents=None,
                  weight_loss_ECR=250.0, weight_loss_TP = 250.0, alpha_TP = 20.0, threshold_cl_large = 0.5,
@@ -416,7 +416,7 @@ class IDEAS(nn.Module):
     #     for word_i in top_words_i:
     #         row = []
     #         for word_j in top_words_j:
-    #             sim = self.word_similarity(word_i, word_j)  # Tính độ tương đồng giữa hai từ
+    #             sim = self.word_similarity(word_i, word_j) 
     #             row.append(sim)
     #         similarity_matrix.append(row)
     #     return torch.tensor(similarity_matrix)
@@ -426,7 +426,7 @@ class IDEAS(nn.Module):
     #     """
     #     Lấy top-k từ từ topic embeddings, dựa trên độ tương đồng giữa các embeddings.
     #     """
-    #     topic_embedding = self.topic_embeddings[topic_id]  # Lấy embedding của topic
+    #     topic_embedding = self.topic_embeddings[topic_id] 
 
     #     # Tính cosine similarity giữa topic_embedding và tất cả các topic khác
     #     similarities = []
