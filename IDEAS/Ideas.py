@@ -147,8 +147,10 @@ class IDEAS(nn.Module):
             return
 
         # Bước 1: Sử dụng KMeans để tạo các cụm lớn (num_groups)
-        kmeans = KMeans(n_clusters=self.num_groups, max_iter=2000, verbose=False, n_init='auto')
+        kmeans = KMeans(n_clusters=self.num_groups, max_iter=2000, verbose=False, n_init=10)
         group_id = kmeans.fit_predict(self.topic_embeddings.cpu().detach().numpy())
+        print("Unique cluster IDs:", len(set(group_id)))
+
 
         self.group_topic = [[] for _ in range(self.num_groups)]
         for i in range(self.num_topics):
