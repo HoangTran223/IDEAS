@@ -108,61 +108,100 @@ class IDEAS(nn.Module):
         distances = torch.cdist(self.topic_embeddings, self.topic_embeddings, p=2)  
         distances = distances.detach().cpu().numpy()
 
-        np.fill_diagonal(distances, 0)
+        np.fill_diagonal(distances, np.inf)
 
         # Dùng linkage để thực hiện HAC
-        Z = linkage(distances, method='ward') 
+        Z = linkage(distances, method='average', optimal_ordering=True) 
 
-        # Chia thành số cụm lớn
-        group_id = fcluster(Z, t=5, criterion='distance')
+        # Chia thành số cụm lớn (max = 5)
+        num_large_clusters = 5
+        group_id = fcluster(Z, t= num_large_clusters, criterion='maxclust') - 1
         
-        self.group_topic = [[] for _ in range(self.num_topics)]
+        self.group_topic = [[] for _ in range(num_large_clusters)]
         for i in range(self.num_topics):
-            self.group_topic[group_id[i] - 1].append(i)  # Lưu topic vào mỗi nhóm lớn
+            self.group_topic[group_id[i]].append(i)  # Lưu topic vào mỗi nhóm lớn
 
         # Tạo sub-clusters trong mỗi nhóm lớn
         self.sub_cluster = {}
-        for group_idx, topics in enumerate(self.group_topic):
-            sub_embeddings = self.topic_embeddings[topics]  
+        for group_idx, topics in enumerate(self.group_topic):  
             if len(sub_embeddings) < 2:
                 self.sub_cluster[group_idx] = {0: topics} 
                 continue
 
+            sub_embeddings = self.topic_embeddings[topics]
             sub_distances = torch.cdist(sub_embeddings, sub_embeddings, p=2).detach().cpu().numpy() 
-            sub_Z = linkage(sub_distances, method='ward')
+            np.fill_diagonal(sub_distances, np.inf)
 
-            sub_group_id = fcluster(sub_Z, t= 2, criterion='distance')
+            sub_Z = linkage(sub_distances, method='average')
+            num_sub_clusters = 3
+            sub_group_id = fcluster(sub_Z, t= num_sub_clusters, criterion='maxclust') - 1
 
             self.sub_cluster[group_idx] = {}
             for sub_idx, topic_idx in enumerate(topics):
-                self.sub_cluster[group_idx].setdefault(sub_group_id[sub_idx], []).append(topic_idx)
+                sub_cluster_id = sub_group_id[i]
+                self.sub_cluster[group_idx].setdefault(sub_cluster_id, []).append(topic_idx)
     
 
 
+    # def get_contrastive_loss(self):
+    #     loss_cl = 0.0
+    #     for group_idx, sub_clusters in self.sub_cluster.items():
+    #         for sub_group_id, sub_topic in sub_clusters.items():
+    #             if len(sub_topic) <= 1:
+    #                 continue
+
+    #             # Tạo embedding cho cụm = tính trung bình
+    #             embeddings = self.topic_embeddings[sub_topic]
+    #             mean_embedding = torch.mean(embeddings, dim=0).unsqueeze(0)
+                
+    #             norm_embeddings = F.normalize(mean_embedding, p=2, dim=1)
+    #             similarity_matrix = torch.mm(norm_embeddings, norm_embeddings.T)
+                
+    #             positive_pairs = similarity_matrix[similarity_matrix >= self.threshold_cl]
+    #             negative_pairs = similarity_matrix[similarity_matrix < self.threshold_cl]
+
+    #             loss_pos = torch.sum(F.relu(1 - positive_pairs)) 
+    #             loss_neg = torch.sum(F.relu(negative_pairs - self.threshold_cl))  
+    #             loss_cl += loss_pos + loss_neg
+
+    #     loss_cl *= self.weight_loss_cl
+    #     return loss_cl
+
     def get_contrastive_loss(self):
         loss_cl = 0.0
+        tau = 0.5 # Temperature parameter
+
         for group_idx, sub_clusters in self.sub_cluster.items():
-            for sub_group_id, sub_topic in sub_clusters.items():
-                if len(sub_topic) <= 1:
+            if len(sub_clusters) <= 1:
                     continue
-
+            
+            embeddings = []
+            for sub_group_id, sub_topic in sub_clusters.items():
+                if len(sub_topic) < 1:
+                    continue
                 # Tạo embedding cho cụm = tính trung bình
-                embeddings = self.topic_embeddings[sub_topic]
-                mean_embedding = torch.mean(embeddings, dim=0).unsqueeze(0)
-                
-                norm_embeddings = F.normalize(mean_embedding, p=2, dim=1)
-                similarity_matrix = torch.mm(norm_embeddings, norm_embeddings.T)
-                
-                positive_pairs = similarity_matrix[similarity_matrix >= self.threshold_cl]
-                negative_pairs = similarity_matrix[similarity_matrix < self.threshold_cl]
+                sub_embeddings = self.topic_embeddings[sub_topic]
+                mean_embedding = torch.mean(sub_embeddings, dim=0, keepdim= True) # mean embedding for each sub cluster
+                embeddings.append(mean_embedding)
 
-                loss_pos = torch.sum(F.relu(1 - positive_pairs)) 
-                loss_neg = torch.sum(F.relu(negative_pairs - self.threshold_cl))  
-                loss_cl += loss_pos + loss_neg
+            if len(embeddings) < 2:
+                continue
+
+            embeddings = torch.cat(embeddings, dim=0)
+            norm_embeddings = F.normalize(embeddings, p=2, dim=1)
+            similarity_matrix = torch.mm(norm_embeddings, norm_embeddings.T) / tau # (num_sub_clusters, num_sub_clusters)
+
+            # Compute the logits for the InfoNCE loss
+            logits = similarity_matrix
+
+            # Create the labels for the InfoNCE loss
+            labels = torch.arange(logits.shape[0]).to(logits.device)
+
+            # Calculate the InfoNCE loss
+            loss_cl += F.cross_entropy(logits, labels)
 
         loss_cl *= self.weight_loss_cl
         return loss_cl
-
     
 
     def get_contrastive_loss_large_clusters(self):
@@ -178,17 +217,25 @@ class IDEAS(nn.Module):
         norm_embeddings = F.normalize(group_embeddings, p=2, dim=1)
         similarity_matrix = torch.mm(norm_embeddings, norm_embeddings.T)
 
-        for i in range(len(self.group_topic)):
-            for j in range(i + 1, len(self.group_topic)):
-                similarity = similarity_matrix[i, j]
-                
-                if similarity >= self.threshold_cl_large:
-                    loss_cl_large += F.relu(1 - similarity)  
-                else:
-                    loss_cl_large += F.relu(similarity - self.threshold_cl_large) 
+        labels = torch.arange(len(self.group_topic)).to(similarity_matrix.device)
+
+        # Calculate InfoNCE loss
+        loss_cl_large = F.cross_entropy(similarity_matrix, labels)
 
         loss_cl_large *= self.weight_loss_cl_large
         return loss_cl_large
+
+        # for i in range(len(self.group_topic)):
+        #     for j in range(i + 1, len(self.group_topic)):
+        #         similarity = similarity_matrix[i, j]
+                
+        #         if similarity >= self.threshold_cl_large:
+        #             loss_cl_large += F.relu(1 - similarity)  
+        #         else:
+        #             loss_cl_large += F.relu(similarity - self.threshold_cl_large) 
+
+        # loss_cl_large *= self.weight_loss_cl_large
+        # return loss_cl_large
 
     # def get_top_words(self, vocab, group_index, num_top_words=15):
     #     beta = self.get_beta().detach().cpu().numpy()
@@ -348,7 +395,7 @@ class IDEAS(nn.Module):
         loss_TP = self.get_loss_TP(indices)
         loss_DT_ETP = self.get_loss_DT_ETP()
 
-        if epoch_id >= 1 and self.weight_loss_cl_large != 0 and self.weight_loss_cl != 0:
+        if epoch_id >= 10 and self.weight_loss_cl_large != 0 and self.weight_loss_cl != 0:
             loss_cl_large = self.get_contrastive_loss_large_clusters()
             loss_cl = self.get_contrastive_loss()
         
