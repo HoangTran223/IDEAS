@@ -118,7 +118,7 @@ class IDEAS(nn.Module):
         # Chia thành số cụm lớn (max = self.num_large_clusters)
         group_id = fcluster(Z, t= self.num_large_clusters, criterion='maxclust') - 1
         
-        self.group_topic = [[] for _ in range(num_large_clusters)]
+        self.group_topic = [[] for _ in range(self.num_large_clusters)]
         for i in range(self.num_topics):
             self.group_topic[group_id[i]].append(i)  # Lưu topic vào mỗi nhóm lớn
 
