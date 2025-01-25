@@ -395,7 +395,7 @@ class IDEAS(nn.Module):
         loss_TP = self.get_loss_TP(indices)
         loss_DT_ETP = self.get_loss_DT_ETP()
 
-        if epoch_id >= 10 and self.weight_loss_cl_large != 0 and self.weight_loss_cl != 0:
+        if epoch_id >= 30 and self.weight_loss_cl_large != 0 and self.weight_loss_cl != 0:
             loss_cl_large = self.get_contrastive_loss_large_clusters()
             loss_cl = self.get_contrastive_loss()
         
