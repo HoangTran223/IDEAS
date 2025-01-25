@@ -168,8 +168,7 @@ class IDEAS(nn.Module):
             # Dùng linkage để thực hiện HAC
             sub_Z = linkage(sub_distances, method='ward')
 
-            # Chia cụm con bằng HAC (ví dụ: tối đa 3 cụm con)
-            sub_group_id = fcluster(sub_Z, t=0.5, criterion='distance')
+            sub_group_id = fcluster(sub_Z, t=2, criterion='distance')
 
             self.sub_cluster[group_idx] = {}
             for sub_idx, topic_idx in enumerate(topics):
