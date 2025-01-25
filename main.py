@@ -11,7 +11,6 @@ import evaluations
 import datasethandler
 import scipy
 import torch
-import h5py
 from tqdm import tqdm
 
 RESULT_DIR = 'results'
