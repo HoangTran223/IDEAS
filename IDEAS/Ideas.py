@@ -117,7 +117,7 @@ class IDEAS(nn.Module):
         Z = linkage(distances, method='ward') 
 
         # Chia thành số cụm lớn
-        group_id = fcluster(Z, t=0.5, criterion='inconsistent')
+        group_id = fcluster(Z, t=0.5, criterion='distance')
         
         self.group_topic = [[] for _ in range(self.num_groups)]
         for i in range(self.num_topics):
@@ -136,7 +136,7 @@ class IDEAS(nn.Module):
 
             sub_distances = torch.cdist(sub_embeddings, sub_embeddings, p=2).detach().cpu().numpy() 
             sub_Z = linkage(sub_distances, method='ward')
-            sub_group_id = fcluster(sub_Z, t = 0.5, criterion='inconsistent')
+            sub_group_id = fcluster(sub_Z, t = 0.5, criterion='distance')
 
             self.sub_cluster[group_idx] = {}
             for sub_idx, topic_idx in enumerate(topics):
