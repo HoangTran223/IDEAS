@@ -11,6 +11,7 @@ import torch_kmeans
 import logging
 import sentence_transformers
 from heapq import nlargest
+from sklearn.metrics import silhouette_score
 
 
 ##
