@@ -108,11 +108,10 @@ class IDEAS(nn.Module):
         distances = torch.cdist(self.topic_embeddings, self.topic_embeddings, p=2)  
         distances = distances.detach().cpu().numpy()
 
-        # np.fill_diagonal(distances, 0)
-        distances_condensed = squareform(distances)
+        np.fill_diagonal(distances, 0)
 
         # Dùng linkage để thực hiện HAC
-        Z = linkage(distances_condensed, method='average', optimal_ordering=True) 
+        Z = linkage(distances, method='average', optimal_ordering=True) 
 
         # Chia thành số cụm lớn (max = 5)
         num_large_clusters = 5
@@ -133,8 +132,7 @@ class IDEAS(nn.Module):
             sub_distances = torch.cdist(sub_embeddings, sub_embeddings, p=2).detach().cpu().numpy() 
             # np.fill_diagonal(sub_distances, 0)
 
-            sub_distances_condensed = squareform(sub_distances)
-            sub_Z = linkage(sub_distances_condensed, method='average')
+            sub_Z = linkage(sub_distances, method='average')
             num_sub_clusters = 3
             sub_group_id = fcluster(sub_Z, t= num_sub_clusters, criterion='maxclust') - 1
 
