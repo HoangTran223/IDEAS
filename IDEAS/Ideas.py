@@ -124,11 +124,11 @@ class IDEAS(nn.Module):
         # Tạo sub-clusters trong mỗi nhóm lớn
         self.sub_cluster = {}
         for group_idx, topics in enumerate(self.group_topic):  
+            sub_embeddings = self.topic_embeddings[topics]
             if len(sub_embeddings) < 2:
                 self.sub_cluster[group_idx] = {0: topics} 
                 continue
 
-            sub_embeddings = self.topic_embeddings[topics]
             sub_distances = torch.cdist(sub_embeddings, sub_embeddings, p=2).detach().cpu().numpy() 
             np.fill_diagonal(sub_distances, 0)
 
