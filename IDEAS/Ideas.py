@@ -122,7 +122,7 @@ class IDEAS(nn.Module):
         # Chia thành số cụm lớn
         group_id = fcluster(Z, t=0.5, criterion='inconsistent')
         
-        self.group_topic = [[] for _ in range(self.num_groups)]
+        self.group_topic = [[] for _ in range(self.num_topics)]
         for i in range(self.num_topics):
             self.group_topic[group_id[i] - 1].append(i)  # Lưu topic vào mỗi nhóm lớn
 
