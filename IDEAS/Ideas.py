@@ -13,9 +13,9 @@ import sentence_transformers
 from heapq import nlargest
 from sklearn.metrics import silhouette_score
 
-
 ##
 from scipy.cluster.hierarchy import linkage, fcluster
+from scipy.spatial.distance import squareform
 from sklearn.cluster import KMeans
 from utils import static_utils
 
@@ -108,10 +108,11 @@ class IDEAS(nn.Module):
         distances = torch.cdist(self.topic_embeddings, self.topic_embeddings, p=2)  
         distances = distances.detach().cpu().numpy()
 
-        np.fill_diagonal(distances, 0)
+        # np.fill_diagonal(distances, 0)
+        distances_condensed = squareform(distances)
 
         # Dùng linkage để thực hiện HAC
-        Z = linkage(distances, method='average', optimal_ordering=True) 
+        Z = linkage(distances_condensed, method='average', optimal_ordering=True) 
 
         # Chia thành số cụm lớn (max = 5)
         num_large_clusters = 5
@@ -124,21 +125,22 @@ class IDEAS(nn.Module):
         # Tạo sub-clusters trong mỗi nhóm lớn
         self.sub_cluster = {}
         for group_idx, topics in enumerate(self.group_topic):  
-            sub_embeddings = self.topic_embeddings[topics]
-            if len(sub_embeddings) < 2:
+            if len(topics) < 2:
                 self.sub_cluster[group_idx] = {0: topics} 
                 continue
-
+            
+            sub_embeddings = self.topic_embeddings[topics]
             sub_distances = torch.cdist(sub_embeddings, sub_embeddings, p=2).detach().cpu().numpy() 
-            np.fill_diagonal(sub_distances, 0)
+            # np.fill_diagonal(sub_distances, 0)
 
-            sub_Z = linkage(sub_distances, method='average')
+            sub_distances_condensed = squareform(sub_distances)
+            sub_Z = linkage(sub_distances_condensed, method='average')
             num_sub_clusters = 3
             sub_group_id = fcluster(sub_Z, t= num_sub_clusters, criterion='maxclust') - 1
 
             self.sub_cluster[group_idx] = {}
             for sub_idx, topic_idx in enumerate(topics):
-                sub_cluster_id = sub_group_id[i]
+                sub_cluster_id = sub_group_id[sub_idx]
                 self.sub_cluster[group_idx].setdefault(sub_cluster_id, []).append(topic_idx)
     
 
