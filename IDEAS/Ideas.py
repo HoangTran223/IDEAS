@@ -21,15 +21,17 @@ from utils import static_utils
 
 class IDEAS(nn.Module):
     def __init__(self, vocab_size, data_name = '20NG', num_topics=50, num_groups=50, en_units=200, dropout=0.,
-                 cluster_distribution=None, cluster_mean=None, cluster_label=None, 
+                 cluster_distribution=None, cluster_mean=None, cluster_label=None, threshold_epochs = 10,
                  pretrained_WE=None, embed_size=200, beta_temp=0.2, num_documents=None,
                  weight_loss_ECR=250.0, weight_loss_TP = 250.0, alpha_TP = 20.0, threshold_cl_large = 0.5,
                  DT_alpha: float=3.0, weight_loss_DT_ETP = 10.0, threshold_cl = 0.5, vocab = None,
-                 weight_loss_cl = 1.0, weight_loss_cl_large = 1.0,
+                 weight_loss_cl = 1.0, weight_loss_cl_large = 1.0, num_large_clusters = 5, num_sub_clusters = 3,
                  alpha_GR=20.0, alpha_ECR=20.0, sinkhorn_alpha = 20.0, sinkhorn_max_iter=1000):
         super().__init__()
 
-        
+        self.threshold_epochs = threshold_epochs
+        self.num_sub_clusters = num_sub_clusters
+        self.num_large_clusters = num_large_clusters
         self.num_documents = num_documents
         self.num_topics = num_topics
         self.num_groups = num_groups
@@ -113,9 +115,8 @@ class IDEAS(nn.Module):
         # Dùng linkage để thực hiện HAC
         Z = linkage(distances, method='average', optimal_ordering=True) 
 
-        # Chia thành số cụm lớn (max = 5)
-        num_large_clusters = 5
-        group_id = fcluster(Z, t= num_large_clusters, criterion='maxclust') - 1
+        # Chia thành số cụm lớn (max = self.num_large_clusters)
+        group_id = fcluster(Z, t= self.num_large_clusters, criterion='maxclust') - 1
         
         self.group_topic = [[] for _ in range(num_large_clusters)]
         for i in range(self.num_topics):
@@ -133,8 +134,7 @@ class IDEAS(nn.Module):
             # np.fill_diagonal(sub_distances, 0)
 
             sub_Z = linkage(sub_distances, method='average')
-            num_sub_clusters = 3
-            sub_group_id = fcluster(sub_Z, t= num_sub_clusters, criterion='maxclust') - 1
+            sub_group_id = fcluster(sub_Z, t= self.num_sub_clusters, criterion='maxclust') - 1
 
             self.sub_cluster[group_idx] = {}
             for sub_idx, topic_idx in enumerate(topics):
@@ -169,8 +169,6 @@ class IDEAS(nn.Module):
 
     def get_contrastive_loss(self):
         loss_cl = 0.0
-        tau = 0.5 # Temperature parameter
-
         for group_idx, sub_clusters in self.sub_cluster.items():
             if len(sub_clusters) <= 1:
                     continue
@@ -189,7 +187,7 @@ class IDEAS(nn.Module):
 
             embeddings = torch.cat(embeddings, dim=0)
             norm_embeddings = F.normalize(embeddings, p=2, dim=1)
-            similarity_matrix = torch.mm(norm_embeddings, norm_embeddings.T) / tau # (num_sub_clusters, num_sub_clusters)
+            similarity_matrix = torch.mm(norm_embeddings, norm_embeddings.T) # (num_sub_clusters, num_sub_clusters)
 
             # Compute the logits for the InfoNCE loss
             logits = similarity_matrix
@@ -203,6 +201,13 @@ class IDEAS(nn.Module):
         loss_cl *= self.weight_loss_cl
         return loss_cl
     
+    """ InfoNCE Loss: similarity_matrix là ma trận cosine similarity giữa các cụm (xđịnh = tâm cụm). Nó:
+        - similarity_matrix[i, i] (similarity của một cụm lớn với chính nó) cao.
+        - similarity_matrix[i, j] (similarity của một cụm lớn với các cụm lớn khác) thấp, với i != j
+        - positive pair: cặp embedding của 1 cụm với chính nó -> ptu nằm trên đg chéo
+        - negative pair: cặp embedding của 1 cụm với các cụm khác
+        => Mong similarity_matrix gần giống với ma trận đơn vị
+    """
 
     def get_contrastive_loss_large_clusters(self):
         loss_cl_large = 0.0
@@ -395,7 +400,7 @@ class IDEAS(nn.Module):
         loss_TP = self.get_loss_TP(indices)
         loss_DT_ETP = self.get_loss_DT_ETP()
 
-        if epoch_id >= 30 and self.weight_loss_cl_large != 0 and self.weight_loss_cl != 0:
+        if epoch_id >= self.threshold_epochs and self.weight_loss_cl_large != 0 and self.weight_loss_cl != 0:
             loss_cl_large = self.get_contrastive_loss_large_clusters()
             loss_cl = self.get_contrastive_loss()
         
