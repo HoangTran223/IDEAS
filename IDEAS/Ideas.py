@@ -158,10 +158,13 @@ class IDEAS(nn.Module):
             best_sub_clusters = 0
             for num_sub_clusters in range(2, 6):  # thử với số sub-clusters từ 2 đến 5
                 sub_group_id = fcluster(sub_Z, t=num_sub_clusters, criterion='maxclust')
+
                 sub_score = silhouette_score(sub_distances, sub_group_id, metric='precomputed')
-                if sub_score > best_sub_score:
-                    best_sub_score = sub_score
-                    best_sub_clusters = num_sub_clusters
+                if len(set(sub_group_id)) > 1:  # Nếu có ít nhất 2 nhóm, tính silhouette score
+                    sub_score = silhouette_score(sub_distances, sub_group_id, metric='precomputed')
+                    if sub_score > best_sub_score:
+                        best_sub_score = sub_score
+                        best_sub_clusters = num_sub_clusters
 
             print(f"Best sub-clusters for group {group_idx}: {best_sub_clusters} with silhouette score: {best_sub_score}")
 
