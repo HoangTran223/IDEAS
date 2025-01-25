@@ -86,9 +86,6 @@ class IDEAS(nn.Module):
         self.doc_embeddings = torch.empty((self.num_documents, self.num_documents))
         nn.init.trunc_normal_(self.doc_embeddings, std=0.1)
         self.doc_embeddings = nn.Parameter(F.normalize(self.doc_embeddings))
-        # self.doc_embeddings = nn.Parameter(
-        #     torch.randn((self.num_documents, self.num_documents))
-        # )
         self.group_topic = None
         self.sub_cluster = None
 
@@ -107,9 +104,6 @@ class IDEAS(nn.Module):
 
 
     def create_group_topic(self):
-        if self.num_topics == 0 or self.num_groups == 0:
-            print("Warning: num_topics or num_groups is zero!")
-            return
 
         distances = torch.cdist(self.topic_embeddings, self.topic_embeddings, p=2)  
         distances = distances.detach().cpu().numpy()
@@ -130,9 +124,6 @@ class IDEAS(nn.Module):
         self.sub_cluster = {}
         for group_idx, topics in enumerate(self.group_topic):
             sub_embeddings = self.topic_embeddings[topics]  
-            # kmean_model = KMeans(n_clusters=min(3, len(topics)), max_iter=1000, verbose=False, n_init='auto')
-            # sub_group_id = kmean_model.fit_predict(sub_embeddings.cpu().detach().numpy()) 
-
             if len(sub_embeddings) < 2:
                 self.sub_cluster[group_idx] = {0: topics} 
                 continue
@@ -154,16 +145,17 @@ class IDEAS(nn.Module):
             for sub_group_id, sub_topic in sub_clusters.items():
                 if len(sub_topic) <= 1:
                     continue
+
+                # Tạo embedding cho cụm = tính trung bình
                 embeddings = self.topic_embeddings[sub_topic]
+                mean_embedding = torch.mean(embeddings, dim=0).unsqueeze(0)
                 
-                # Tính cosine similarity giữa các embedding trong cùng một sub-cluster
-                norm_embeddings = F.normalize(embeddings, p=2, dim=1)
+                norm_embeddings = F.normalize(mean_embedding, p=2, dim=1)
                 similarity_matrix = torch.mm(norm_embeddings, norm_embeddings.T)
                 
                 positive_pairs = similarity_matrix[similarity_matrix >= self.threshold_cl]
                 negative_pairs = similarity_matrix[similarity_matrix < self.threshold_cl]
 
-                # Tính loss
                 loss_pos = torch.sum(F.relu(1 - positive_pairs)) 
                 loss_neg = torch.sum(F.relu(negative_pairs - self.threshold_cl))  
                 loss_cl += loss_pos + loss_neg
@@ -176,7 +168,7 @@ class IDEAS(nn.Module):
     def get_contrastive_loss_large_clusters(self):
         loss_cl_large = 0.0
 
-        # Tạo embedding cho cụm = tính trung bình 
+         
         group_embeddings = []
         for group_topics in self.group_topic:
             group_embeddings.append(torch.mean(self.topic_embeddings[group_topics], dim=0))
