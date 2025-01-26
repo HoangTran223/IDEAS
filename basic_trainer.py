@@ -98,8 +98,8 @@ class BasicTrainer:
 
                 self.logger.info(output_log)
 
-            if epoch_id % 100 == 0:
-                print(f"loss_TP: {loss_rst_dict['loss_TP']}, loss_TM: {loss_rst_dict['loss_TM']}, loss_cl: {loss_rst_dict['loss_cl']} \
+            if epoch_id % 70 == 0:
+                print(f"loss_TP: {loss_rst_dict['loss_TP']}, loss_TM: {loss_rst_dict['loss_TM']}, loss_cl: {loss_rst_dict['loss_cl']}, loss_cl_words: {loss_rst_dict['loss_cl_words']} \
                     loss_ECR: {loss_rst_dict['loss_ECR']}, loss_DT_ETP: {loss_rst_dict['loss_DT_ETP']}, loss_cl_large: {loss_rst_dict['loss_cl_large']}'\n")
         print(f"self.sub_cluster: {self.model.sub_cluster}\n")
 

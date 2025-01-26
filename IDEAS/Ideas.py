@@ -432,7 +432,7 @@ class IDEAS(nn.Module):
             loss_cl = 0.0
             loss_cl_words = 0.0
             
-        loss = loss_TM + loss_ECR + loss_TP + loss_DT_ETP + loss_cl + loss_cl_large
+        loss = loss_TM + loss_ECR + loss_TP + loss_DT_ETP + loss_cl + loss_cl_large + loss_cl_words
         rst_dict = {
             'loss': loss,
             'loss_TM': loss_TM,
@@ -440,7 +440,8 @@ class IDEAS(nn.Module):
             'loss_DT_ETP': loss_DT_ETP,
             'loss_TP': loss_TP,
             'loss_cl': loss_cl,
-            'loss_cl_large': loss_cl_large
+            'loss_cl_large': loss_cl_large,
+            'loss_cl_words': loss_cl_words,
         }
 
         return rst_dict
