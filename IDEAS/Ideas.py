@@ -190,37 +190,84 @@ class IDEAS(nn.Module):
         return topic_idx
     
 
-    def get_contrastive_loss(self):
-        loss_cl = 0.0
-        for group_idx, sub_clusters in self.sub_cluster.items():
-            if len(sub_clusters) <= 1:
-                    continue
+    # def get_contrastive_loss(self):
+    #     loss_cl = 0.0
+    #     for group_idx, sub_clusters in self.sub_cluster.items():
+    #         if len(sub_clusters) <= 1:
+    #                 continue
             
-            embeddings = []
-            for sub_group_id, sub_topic in sub_clusters.items():
-                if len(sub_topic) < 1:
-                    continue
-                # Tạo embedding cho cụm = tính trung bình
-                sub_embeddings = self.topic_embeddings[sub_topic]
-                mean_embedding = torch.mean(sub_embeddings, dim=0, keepdim= True) 
-                embeddings.append(mean_embedding)
+    #         embeddings = []
+    #         for sub_group_id, sub_topic in sub_clusters.items():
+    #             if len(sub_topic) < 1:
+    #                 continue
+    #             # Tạo embedding cho cụm = tính trung bình
+    #             sub_embeddings = self.topic_embeddings[sub_topic]
+    #             mean_embedding = torch.mean(sub_embeddings, dim=0, keepdim= True) 
+    #             embeddings.append(mean_embedding)
 
-            if len(embeddings) < 2:
+    #         if len(embeddings) < 2:
+    #             continue
+
+    #         embeddings = torch.cat(embeddings, dim=0)
+    #         norm_embeddings = F.normalize(embeddings, p=2, dim=1)
+    #         similarity_matrix = torch.mm(norm_embeddings, norm_embeddings.T) # (num_sub_clusters, num_sub_clusters)
+
+    #         logits = similarity_matrix
+
+    #         # Create the labels for the InfoNCE loss
+    #         labels = torch.arange(logits.shape[0]).to(logits.device)
+    #         loss_cl += F.cross_entropy(logits, labels)
+
+    #     loss_cl *= self.weight_loss_cl
+    #     return loss_cl
+    def get_contrastive_loss(self, margin=0.2, num_negatives=10):
+        loss_cl = 0.0
+
+        # Duyệt qua từng cụm lớn
+        for group_idx, sub_clusters in self.sub_cluster.items():
+            # Bỏ qua các cụm lớn có ít hơn 2 cụm con
+            if len(sub_clusters) <= 1:
                 continue
 
-            embeddings = torch.cat(embeddings, dim=0)
-            norm_embeddings = F.normalize(embeddings, p=2, dim=1)
-            similarity_matrix = torch.mm(norm_embeddings, norm_embeddings.T) # (num_sub_clusters, num_sub_clusters)
+            # Duyệt qua từng cụm con
+            for sub_group_id, sub_topic_idxes in sub_clusters.items():
+                # Bỏ qua các cụm con có ít hơn 2 topic
+                if len(sub_topic_idxes) < 2:
+                    continue
 
-            logits = similarity_matrix
+                # Anchor: embedding trung bình của các topic trong cụm con
+                anchor = torch.mean(self.topic_embeddings[sub_topic_idxes], dim=0, keepdim=True)
 
-            # Create the labels for the InfoNCE loss
-            labels = torch.arange(logits.shape[0]).to(logits.device)
-            loss_cl += F.cross_entropy(logits, labels)
+                # Positive: một topic trong cụm con đó (lấy ngẫu nhiên)
+                positive_topic_idx = np.random.choice(sub_topic_idxes)
+                positive = self.topic_embeddings[positive_topic_idx].unsqueeze(0)
+
+                # Negative: 10 topic từ các cụm con khác trong cùng cụm lớn
+                negative_candidates = []
+                for neg_sub_group_id, neg_sub_topic_idxes in sub_clusters.items():
+                    if neg_sub_group_id != sub_group_id:  # Khác cụm con
+                        negative_candidates.extend(neg_sub_topic_idxes)
+
+                # Nếu cụm lớn không đủ số cụm con để tạo đủ 10 negatives, bỏ qua
+                if len(negative_candidates) < num_negatives:
+                    continue
+
+                # Lấy ngẫu nhiên 10 negative samples
+                negative_topic_idxes = np.random.choice(negative_candidates, size=num_negatives, replace=False)
+                negatives = self.topic_embeddings[negative_topic_idxes]
+
+                # Tính khoảng cách
+                pos_distance = F.pairwise_distance(anchor, positive)
+                neg_distances = F.pairwise_distance(anchor.repeat(num_negatives, 1), negatives)
+
+                # Tính triplet loss
+                loss = torch.clamp(pos_distance - neg_distances + margin, min=0.0)
+                loss_cl += loss.mean()
 
         loss_cl *= self.weight_loss_cl
         return loss_cl
-    
+
+
     """ InfoNCE Loss: similarity_matrix là ma trận cosine similarity giữa các cụm (xđịnh = tâm cụm). Nó:
         - similarity_matrix[i, i] (similarity của một cụm lớn với chính nó) cao.
         - similarity_matrix[i, j] (similarity của một cụm lớn với các cụm lớn khác) thấp, với i != j
@@ -229,23 +276,64 @@ class IDEAS(nn.Module):
         => Mong similarity_matrix gần giống với ma trận đơn vị
     """
 
-    def get_contrastive_loss_large_clusters(self):
-        loss_cl_large = 0.0
+    # def get_contrastive_loss_large_clusters(self):
+    #     loss_cl_large = 0.0
 
          
-        group_embeddings = []
-        for group_topics in self.group_topic:
-            group_embeddings.append(torch.mean(self.topic_embeddings[group_topics], dim=0))
+    #     group_embeddings = []
+    #     for group_topics in self.group_topic:
+    #         group_embeddings.append(torch.mean(self.topic_embeddings[group_topics], dim=0))
         
-        group_embeddings = torch.stack(group_embeddings) 
+    #     group_embeddings = torch.stack(group_embeddings) 
 
-        norm_embeddings = F.normalize(group_embeddings, p=2, dim=1)
-        similarity_matrix = torch.mm(norm_embeddings, norm_embeddings.T)
+    #     norm_embeddings = F.normalize(group_embeddings, p=2, dim=1)
+    #     similarity_matrix = torch.mm(norm_embeddings, norm_embeddings.T)
 
-        labels = torch.arange(len(self.group_topic)).to(similarity_matrix.device)
+    #     labels = torch.arange(len(self.group_topic)).to(similarity_matrix.device)
 
-        # Calculate InfoNCE loss
-        loss_cl_large = F.cross_entropy(similarity_matrix, labels)
+    #     # Calculate InfoNCE loss
+    #     loss_cl_large = F.cross_entropy(similarity_matrix, labels)
+
+    #     loss_cl_large *= self.weight_loss_cl_large
+    #     return loss_cl_large
+
+    
+    def get_contrastive_loss_large_clusters(self, margin=0.2, num_negatives=10):
+        loss_cl_large = 0.0
+
+        # Duyệt qua từng cụm lớn
+        for group_idx, group_topics in enumerate(self.group_topic):
+            # Bỏ qua các cụm lớn có ít hơn 2 topic
+            if len(group_topics) < 2:
+                continue
+
+            # Anchor: embedding trung bình của các topic trong cụm lớn
+            anchor = torch.mean(self.topic_embeddings[group_topics], dim=0, keepdim=True)
+
+            # Positive: một topic trong cụm lớn đó (lấy ngẫu nhiên)
+            positive_topic_idx = np.random.choice(group_topics)
+            positive = self.topic_embeddings[positive_topic_idx].unsqueeze(0)
+
+            # Negative: 10 topic từ các cụm lớn khác
+            negative_candidates = []
+            for neg_group_idx, neg_group_topics in enumerate(self.group_topic):
+                if neg_group_idx != group_idx:  # Khác cụm lớn
+                    negative_candidates.extend(neg_group_topics)
+
+            if len(negative_candidates) < num_negatives:
+                continue
+
+            # Lấy ngẫu nhiên 10 negative samples
+            negative_topic_idxes = np.random.choice(negative_candidates, size=num_negatives, replace=False)
+            negatives = self.topic_embeddings[negative_topic_idxes]
+
+            # Tính khoảng cách
+            pos_distance = F.pairwise_distance(anchor, positive)
+            neg_distances = F.pairwise_distance(anchor.repeat(num_negatives, 1), negatives)
+
+            # Tính triplet loss
+            loss = torch.clamp(pos_distance - neg_distances + margin, min=0.0)
+            loss_cl_large += loss.mean()
 
         loss_cl_large *= self.weight_loss_cl_large
         return loss_cl_large
