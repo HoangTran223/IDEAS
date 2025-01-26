@@ -242,7 +242,7 @@ class IDEAS(nn.Module):
                 positive_topic_idx = np.random.choice(sub_topic_idxes)
                 positive = self.topic_embeddings[positive_topic_idx].unsqueeze(0)
 
-                # Negative: 10 topic từ các cụm con khác trong cùng cụm lớn
+                # Negative: 3 topic từ các cụm con khác trong cùng cụm lớn
                 negative_candidates = []
                 for neg_sub_group_id, neg_sub_topic_idxes in sub_clusters.items():
                     if neg_sub_group_id != sub_group_id:  # Khác cụm con
@@ -342,7 +342,7 @@ class IDEAS(nn.Module):
     def get_contrastive_loss_words(self):
         loss_cl_words = 0.0
         margin = 0.2 
-        num_negatives = 5
+        num_negatives = 10
 
         for group_idx, sub_clusters in self.sub_cluster.items():
             if len(sub_clusters) <= 1:
