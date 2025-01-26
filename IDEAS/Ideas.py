@@ -99,6 +99,10 @@ class IDEAS(nn.Module):
 
         self.document_emb_prj = nn.Sequential(nn.Linear(self.num_documents, self.word_embeddings.shape[1] ),
                                        nn.Dropout(dropout))
+        
+
+        self.topics = []
+        self.topic_index_mapping = {}
 
         # self.topic_top_words = {}
         # self.word_embeddings_dict = {
@@ -142,6 +146,48 @@ class IDEAS(nn.Module):
             for sub_idx, topic_idx in enumerate(topics):
                 sub_cluster_id = sub_group_id[sub_idx]
                 self.sub_cluster[group_idx].setdefault(sub_cluster_id, []).append(topic_idx)
+        
+        topic_idx_counter = 0
+        word_topic_assignments = self.get_word_topic_assignments()  # Lấy danh sách từ trong từng topic
+        for group_idx, sub_clusters in self.sub_cluster.items():
+          for sub_group_id, sub_topic_idxes in sub_clusters.items():
+            for topic_idx in sub_topic_idxes:
+              self.topics.append(word_topic_assignments[topic_idx])
+              self.topic_index_mapping[topic_idx] = topic_idx_counter
+              topic_idx_counter += 1
+    
+
+    def get_word_topic_assignments(self):
+        """
+        Assigns words to topics based on their highest probability.
+        Returns:
+            A list of lists, where each inner list contains the indices of words assigned to a topic.
+        """
+        word_topic_assignments = [[] for _ in range(self.num_topics)]
+        for word_idx, word in enumerate(self.vocab):
+            topic_idx = self.word_to_topic_by_similarity(word)
+            word_topic_assignments[topic_idx].append(word_idx)
+        return word_topic_assignments
+    
+
+    def word_to_topic_by_similarity(self, word):
+        """
+        Assigns a word to a topic based on cosine similarity between word embedding and topic embeddings.
+        Args:
+            word: The word to assign.
+        Returns:
+            The index of the topic to which the word is assigned.
+        """
+        word_idx = self.vocab.index(word)
+        word_embedding = self.word_embeddings[word_idx].unsqueeze(0)
+
+        # Calculate cosine similarity between the word embedding and all topic embeddings
+        similarity_scores = F.cosine_similarity(word_embedding, self.topic_embeddings)
+
+        # Find the topic with the highest similarity score
+        topic_idx = torch.argmax(similarity_scores).item()
+
+        return topic_idx
     
 
     def get_contrastive_loss(self):
@@ -220,7 +266,8 @@ class IDEAS(nn.Module):
                     continue
 
                 # Lấy danh sách các topic (word_index) trong cụm con hiện tại
-                sub_topic_words = [self.topics[topic_idx] for topic_idx in sub_topic_idxes]
+                # sub_topic_words = [self.topics[topic_idx] for topic_idx in sub_topic_idxes]
+                sub_topic_words = [self.topics[self.topic_index_mapping[topic_idx]] for topic_idx in sub_topic_idxes]
 
                 # Duyệt qua từng topic con trong cụm lớn
                 for anchor_topic_idx, anchor_words_idxes in zip(sub_topic_idxes, sub_topic_words):
@@ -240,7 +287,8 @@ class IDEAS(nn.Module):
                     for neg_sub_group_id, neg_sub_topic_idxes in sub_clusters.items():
                         if neg_sub_group_id != sub_group_id: # khác topic con
                             for topic_idx in neg_sub_topic_idxes:
-                                negative_candidates.extend(self.topics[topic_idx])
+                                # negative_candidates.extend(self.topics[topic_idx])
+                                negative_candidates.extend(self.topics[self.topic_index_mapping[topic_idx]])
 
                     if len(negative_candidates) < num_negatives:
                         continue
