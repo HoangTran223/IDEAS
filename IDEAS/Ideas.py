@@ -510,15 +510,18 @@ class IDEAS(nn.Module):
         loss_TP = self.get_loss_TP(indices)
         loss_DT_ETP = self.get_loss_DT_ETP()
 
-        if epoch_id >= self.threshold_epochs and self.weight_loss_cl_large != 0 and self.weight_loss_cl != 0 and self.weight_loss_cl_words != 0:
+        loss_cl_large = 0.0
+        loss_cl = 0.0
+        loss_cl_words = 0.0
+
+        if epoch_id >= self.threshold_epochs and self.weight_loss_cl_large != 0:
             loss_cl_large = self.get_contrastive_loss_large_clusters()
-            loss_cl = self.get_contrastive_loss()
-            loss_cl_words = self.get_contrastive_loss_words()
         
-        else:
-            loss_cl_large = 0.0
-            loss_cl = 0.0
-            loss_cl_words = 0.0
+        if epoch_id >= self.threshold_epochs and self.weight_loss_cl != 0:
+            loss_cl = self.get_contrastive_loss()
+        
+        if epoch_id >= self.threshold_epochs and self.weight_loss_cl_words != 0:
+            loss_cl_words = self.get_contrastive_loss_words()
             
         loss = loss_TM + loss_ECR + loss_TP + loss_DT_ETP + loss_cl + loss_cl_large + loss_cl_words
         rst_dict = {
