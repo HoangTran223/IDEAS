@@ -71,8 +71,10 @@ class BasicTrainer:
             loss_rst_dict = defaultdict(float)
 
             for batch_id, batch in enumerate(dataset_handler.train_dataloader): 
-                *inputs, indices = batch
-                batch_data = inputs
+                # *inputs, indices = batch
+                *inputs, indices, doc_embeddings = batch
+                # batch_data = inputs
+                batch_data = inputs + [doc_embeddings]
                 rst_dict = self.model(indices, batch_data, epoch_id=epoch)
                 batch_loss = rst_dict['loss']
 

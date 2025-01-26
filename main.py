@@ -61,7 +61,8 @@ if __name__ == "__main__":
 
     dataset = datasethandler.BasicDatasetHandler(
         os.path.join(DATA_DIR, args.dataset), device=args.device, read_labels=read_labels,
-        as_tensor=True, contextual_embed=True)
+        as_tensor=True, contextual_embed=True,
+        doc2vec_size=200) ##
 
     pretrainWE = scipy.sparse.load_npz(os.path.join(
         DATA_DIR, args.dataset, "word_embeddings.npz")).toarray()
@@ -141,7 +142,8 @@ if __name__ == "__main__":
                         num_sub_clusters=args.num_sub_clusters,
                         num_large_clusters=args.num_large_clusters,
                         weight_loss_cl_words = args.weight_loss_cl_words,
-                        threshold_epochs=args.threshold_epochs)       
+                        threshold_epochs=args.threshold_epochs,
+                        doc_embeddings=dataset.doc_embeddings)       
 
     model.weight_loss_DT_ETP = args.weight_loss_DT_ETP
     model.weight_loss_TP = args.weight_loss_TP
@@ -162,7 +164,7 @@ if __name__ == "__main__":
 
 
     # train the model
-    trainer.train(dataset)
+    trainer.train(dataset, doc_embeddings=dataset.doc_embeddings)
 
     # save beta, theta and top words
     beta = trainer.save_beta(current_run_dir)

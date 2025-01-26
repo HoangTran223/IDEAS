@@ -25,7 +25,7 @@ class IDEAS(nn.Module):
                  cluster_distribution=None, cluster_mean=None, cluster_label=None, threshold_epochs = 10,
                  pretrained_WE=None, embed_size=200, beta_temp=0.2, num_documents=None, weight_loss_cl_words=1.0,
                  weight_loss_ECR=250.0, weight_loss_TP = 250.0, alpha_TP = 20.0, threshold_cl_large = 0.5,
-                 DT_alpha: float=3.0, weight_loss_DT_ETP = 10.0, threshold_cl = 0.5, vocab = None,
+                 DT_alpha: float=3.0, weight_loss_DT_ETP = 10.0, threshold_cl = 0.5, vocab = None, doc_embeddings=None,
                  weight_loss_cl = 1.0, weight_loss_cl_large = 1.0, num_large_clusters = 5, num_sub_clusters = 3,
                  alpha_GR=20.0, alpha_ECR=20.0, sinkhorn_alpha = 20.0, sinkhorn_max_iter=5000):
         super().__init__()
@@ -88,8 +88,8 @@ class IDEAS(nn.Module):
         self.matrixP = None
         self.DT_ETP = DT_ETP(weight_loss_DT_ETP, DT_alpha)
 
-        # self.doc_embeddings = torch.empty((self.num_documents, self.num_documents))
-        self.doc_embeddings = self.initialize_doc_embeddings_with_doc2vec(documents, embed_size)
+        #self.doc_embeddings = torch.empty((self.num_documents, self.num_documents))
+        self.doc_embeddings = nn.Parameter(doc_embeddings)
 
         nn.init.trunc_normal_(self.doc_embeddings, std=0.1)
         self.doc_embeddings = nn.Parameter(F.normalize(self.doc_embeddings))

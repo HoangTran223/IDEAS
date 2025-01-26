@@ -7,6 +7,9 @@ from sentence_transformers import SentenceTransformer
 from . import file_utils
 import os
 
+##
+from gensim.models.doc2vec import Doc2Vec, TaggedDocument
+
 
 def load_contextual_embed(texts, device, model_name="all-mpnet-base-v2", show_progress_bar=True):
     model = SentenceTransformer(model_name, device=device)
@@ -68,11 +71,14 @@ class RawDatasetHandler:
 
 
 class BasicDatasetHandler:
-    def __init__(self, dataset_dir, batch_size=200, read_labels=False, device='cpu', as_tensor=False, contextual_embed=False):
+    def __init__(self, dataset_dir, batch_size=200, read_labels=False, device='cpu', 
+                    as_tensor=False, contextual_embed=False, doc2vec_size=200):
         # train_bow: NxV
         # test_bow: Nxv
         # word_emeddings: VxD
         # vocab: V, ordered by word id.
+
+        self.doc2vec_size = doc2vec_size
 
         self.load_data(dataset_dir, read_labels)
         self.vocab_size = len(self.vocab)
@@ -82,6 +88,9 @@ class BasicDatasetHandler:
         print("===>vocab_size: ", self.vocab_size)
         print("===>average length: {:.3f}".format(
             self.train_bow.sum(1).sum() / self.train_bow.shape[0]))
+        
+        ##
+        self.doc_embeddings = self.initialize_doc_embeddings_with_doc2vec(self.train_texts, self.doc2vec_size)
 
         if contextual_embed:
             if os.path.isfile(os.path.join(dataset_dir, 'with_bert', 'train_bert.npz')):
@@ -140,8 +149,13 @@ class BasicDatasetHandler:
             else:
                 """train_dataset = DatasetHandler(self.train_data)
                 test_dataset = DatasetHandler(self.test_data)"""
-                train_dataset = TensorDataset(self.train_data, self.train_indices)
-                test_dataset = TensorDataset(self.test_data, self.test_indices)
+                # train_dataset = TensorDataset(self.train_data, self.train_indices)
+                # test_dataset = TensorDataset(self.test_data, self.test_indices)
+
+                train_dataset = TensorDataset(self.train_data, self.train_indices, 
+                                            torch.tensor(self.doc_embeddings, dtype=torch.float).to(device))
+                test_dataset = TensorDataset(self.test_data, self.test_indices, 
+                                            torch.tensor(self.doc_embeddings, dtype=torch.float).to(device))
 
                 self.train_dataloader = DataLoader(
                     train_dataset, batch_size=batch_size, shuffle=True)
@@ -166,3 +180,10 @@ class BasicDatasetHandler:
             self.test_labels = np.loadtxt(f'{path}/test_labels.txt', dtype=int)
 
         self.vocab = file_utils.read_text(f'{path}/vocab.txt')
+
+
+    def initialize_doc_embeddings_with_doc2vec(self, documents, embed_size):
+        data = [TaggedDocument(words = doc, tags = [str(i)]) for i, doc in enumerate(documents)]
+        model = Doc2Vec(data, vector_size=embed_size, window=5, min_count=5, workers=4, epochs=40)
+        doc_embeddings = np.array([model.dv[str(i)] for i in range(len(documents))])
+        return doc_embeddings
