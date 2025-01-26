@@ -298,7 +298,7 @@ class IDEAS(nn.Module):
 
                     # Tính khoảng cách
                     pos_distance = F.pairwise_distance(anchor, positive)
-                    neg_distance = F.pairwise_distance(anchor, repeat(num_negatives, 1), negative)
+                    neg_distance = F.pairwise_distance(anchor, anchor.repeat(num_negatives, 1), negative)
 
                     # Tính triplet loss
                     loss = torch.clamp(pos_distance - neg_distance + margin, min=0.0)
