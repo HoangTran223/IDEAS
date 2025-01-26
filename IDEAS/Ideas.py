@@ -220,7 +220,7 @@ class IDEAS(nn.Module):
 
     #     loss_cl *= self.weight_loss_cl
     #     return loss_cl
-    def get_contrastive_loss(self, margin=0.2, num_negatives=10):
+    def get_contrastive_loss(self, margin=0.2, num_negatives=3):
         loss_cl = 0.0
 
         # Duyệt qua từng cụm lớn
@@ -297,7 +297,7 @@ class IDEAS(nn.Module):
     #     loss_cl_large *= self.weight_loss_cl_large
     #     return loss_cl_large
 
-    
+
     def get_contrastive_loss_large_clusters(self, margin=0.2, num_negatives=10):
         loss_cl_large = 0.0
 
