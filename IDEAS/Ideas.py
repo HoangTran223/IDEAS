@@ -14,6 +14,7 @@ from heapq import nlargest
 from sklearn.metrics import silhouette_score
 
 ##
+from gensim.models.doc2vec import Doc2Vec, TaggedDocument
 from scipy.cluster.hierarchy import linkage, fcluster
 from scipy.spatial.distance import squareform
 from sklearn.cluster import KMeans
@@ -87,7 +88,9 @@ class IDEAS(nn.Module):
         self.matrixP = None
         self.DT_ETP = DT_ETP(weight_loss_DT_ETP, DT_alpha)
 
-        self.doc_embeddings = torch.empty((self.num_documents, self.num_documents))
+        # self.doc_embeddings = torch.empty((self.num_documents, self.num_documents))
+        self.doc_embeddings = self.initialize_doc_embeddings_with_doc2vec(documents, embed_size)
+
         nn.init.trunc_normal_(self.doc_embeddings, std=0.1)
         self.doc_embeddings = nn.Parameter(F.normalize(self.doc_embeddings))
         self.group_topic = None
@@ -97,9 +100,11 @@ class IDEAS(nn.Module):
         print(f"chieuY cua doc_embeddings : {len(self.doc_embeddings[0])}")
         self.TP = TP(weight_loss_TP, alpha_TP)
 
-        self.document_emb_prj = nn.Sequential(nn.Linear(self.num_documents, self.word_embeddings.shape[1] ),
-                                       nn.Dropout(dropout))
-        
+        self.document_emb_prj = nn.Sequential(
+            nn.Linear(self.embed_size, self.word_embeddings.shape[1]),
+            nn.ReLU(),
+            nn.Dropout(dropout)
+        )
 
         self.topics = []
         self.topic_index_mapping = {}
@@ -110,6 +115,13 @@ class IDEAS(nn.Module):
         #     for idx, word in enumerate(self.vocab)
         # }
 
+    def initialize_doc_embeddings_with_doc2vec(self, documents, embed_size):
+        data = [TaggedDocument(words = doc, tags = [str(i)]) 
+                        for i, doc in enumerate(documents)]
+        model = Doc2Vec(data, vector_size=embed_size, window=5, min_count=2, workers=4, epochs=20) 
+        doc_embeddings = [model.dv[str(i)] for i in range(len(documents))]
+        return nn.Parameter(torch.tensor(doc_embeddings, dtype=torch.float))
+
 
     def create_group_topic(self):
 
@@ -117,53 +129,46 @@ class IDEAS(nn.Module):
         distances = distances.detach().cpu().numpy()
 
         np.fill_diagonal(distances, 0)
-
-        # Dùng linkage để thực hiện HAC
         Z = linkage(distances, method='average', optimal_ordering=True) 
 
-        # Chia thành số cụm lớn (max = self.num_large_clusters)
+        # Chia cụm lớn (max = self.num_large_clusters)
         group_id = fcluster(Z, t= self.num_large_clusters, criterion='maxclust') - 1
         
         self.group_topic = [[] for _ in range(self.num_large_clusters)]
         for i in range(self.num_topics):
-            self.group_topic[group_id[i]].append(i)  # Lưu topic vào mỗi nhóm lớn
+            self.group_topic[group_id[i]].append(i) 
 
         # Tạo sub-clusters trong mỗi nhóm lớn
-        self.sub_cluster = {}
-        for group_idx, topics in enumerate(self.group_topic):  
-            if len(topics) < 2:
-                self.sub_cluster[group_idx] = {0: topics} 
-                continue
+        # self.sub_cluster = {}
+        # for group_idx, topics in enumerate(self.group_topic):  
+        #     if len(topics) < 2:
+        #         self.sub_cluster[group_idx] = {0: topics} 
+        #         continue
             
-            sub_embeddings = self.topic_embeddings[topics]
-            sub_distances = torch.cdist(sub_embeddings, sub_embeddings, p=2).detach().cpu().numpy() 
-            # np.fill_diagonal(sub_distances, 0)
+        #     sub_embeddings = self.topic_embeddings[topics]
+        #     sub_distances = torch.cdist(sub_embeddings, sub_embeddings, p=2).detach().cpu().numpy() 
+        #     np.fill_diagonal(sub_distances, 0)
 
-            sub_Z = linkage(sub_distances, method='average')
-            sub_group_id = fcluster(sub_Z, t= self.num_sub_clusters, criterion='maxclust') - 1
+        #     sub_Z = linkage(sub_distances, method='average')
+        #     sub_group_id = fcluster(sub_Z, t= self.num_sub_clusters, criterion='maxclust') - 1
 
-            self.sub_cluster[group_idx] = {}
-            for sub_idx, topic_idx in enumerate(topics):
-                sub_cluster_id = sub_group_id[sub_idx]
-                self.sub_cluster[group_idx].setdefault(sub_cluster_id, []).append(topic_idx)
+        #     self.sub_cluster[group_idx] = {}
+        #     for sub_idx, topic_idx in enumerate(topics):
+        #         sub_cluster_id = sub_group_id[sub_idx]
+        #         self.sub_cluster[group_idx].setdefault(sub_cluster_id, []).append(topic_idx)
         
         topic_idx_counter = 0
-        word_topic_assignments = self.get_word_topic_assignments()  # Lấy danh sách từ trong từng topic
-        for group_idx, sub_clusters in self.sub_cluster.items():
-          for sub_group_id, sub_topic_idxes in sub_clusters.items():
-            for topic_idx in sub_topic_idxes:
-              self.topics.append(word_topic_assignments[topic_idx])
-              self.topic_index_mapping[topic_idx] = topic_idx_counter
-              topic_idx_counter += 1
+        # Lấy danh sách từ trong từng topic
+        word_topic_assignments = self.get_word_topic_assignments()
+        for topic_idx in range(self.num_topics):
+            self.topics.append(word_topic_assignments[topic_idx])
+            self.topic_index_mapping[topic_idx] = topic_idx_counter
+            topic_idx_counter += 1
     
 
     def get_word_topic_assignments(self):
-        """
-        Assigns words to topics based on their highest probability.
-        Returns:
-            A list of lists, where each inner list contains the indices of words assigned to a topic.
-        """
         word_topic_assignments = [[] for _ in range(self.num_topics)]
+
         for word_idx, word in enumerate(self.vocab):
             topic_idx = self.word_to_topic_by_similarity(word)
             word_topic_assignments[topic_idx].append(word_idx)
@@ -171,101 +176,52 @@ class IDEAS(nn.Module):
     
 
     def word_to_topic_by_similarity(self, word):
-        """
-        Assigns a word to a topic based on cosine similarity between word embedding and topic embeddings.
-        Args:
-            word: The word to assign.
-        Returns:
-            The index of the topic to which the word is assigned.
-        """
         word_idx = self.vocab.index(word)
         word_embedding = self.word_embeddings[word_idx].unsqueeze(0)
 
-        # Calculate cosine similarity between the word embedding and all topic embeddings
         similarity_scores = F.cosine_similarity(word_embedding, self.topic_embeddings)
-
-        # Find the topic with the highest similarity score
         topic_idx = torch.argmax(similarity_scores).item()
 
         return topic_idx
-    
 
-    # def get_contrastive_loss(self):
+
+    # def get_contrastive_loss(self, margin=0.2, num_negatives=3):
     #     loss_cl = 0.0
+
+    #     # Duyệt qua từng cụm lớn
     #     for group_idx, sub_clusters in self.sub_cluster.items():
     #         if len(sub_clusters) <= 1:
-    #                 continue
-            
-    #         embeddings = []
-    #         for sub_group_id, sub_topic in sub_clusters.items():
-    #             if len(sub_topic) < 1:
-    #                 continue
-    #             # Tạo embedding cho cụm = tính trung bình
-    #             sub_embeddings = self.topic_embeddings[sub_topic]
-    #             mean_embedding = torch.mean(sub_embeddings, dim=0, keepdim= True) 
-    #             embeddings.append(mean_embedding)
-
-    #         if len(embeddings) < 2:
     #             continue
 
-    #         embeddings = torch.cat(embeddings, dim=0)
-    #         norm_embeddings = F.normalize(embeddings, p=2, dim=1)
-    #         similarity_matrix = torch.mm(norm_embeddings, norm_embeddings.T) # (num_sub_clusters, num_sub_clusters)
+    #         # Duyệt qua từng cụm con
+    #         for sub_group_id, sub_topic_idxes in sub_clusters.items():
+    #             if len(sub_topic_idxes) < 2:
+    #                 continue
 
-    #         logits = similarity_matrix
+    #             anchor = torch.mean(self.topic_embeddings[sub_topic_idxes], dim=0, keepdim=True)
 
-    #         # Create the labels for the InfoNCE loss
-    #         labels = torch.arange(logits.shape[0]).to(logits.device)
-    #         loss_cl += F.cross_entropy(logits, labels)
+    #             positive_topic_idx = np.random.choice(sub_topic_idxes)
+    #             positive = self.topic_embeddings[positive_topic_idx].unsqueeze(0)
+
+    #             negative_candidates = []
+    #             for neg_sub_group_id, neg_sub_topic_idxes in sub_clusters.items():
+    #                 if neg_sub_group_id != sub_group_id:  
+    #                     negative_candidates.extend(neg_sub_topic_idxes)
+
+    #             if len(negative_candidates) < num_negatives:
+    #                 continue
+
+    #             negative_topic_idxes = np.random.choice(negative_candidates, size=num_negatives, replace=False)
+    #             negatives = self.topic_embeddings[negative_topic_idxes]
+
+    #             pos_distance = F.pairwise_distance(anchor, positive)
+    #             neg_distances = F.pairwise_distance(anchor.repeat(num_negatives, 1), negatives)
+
+    #             loss = torch.clamp(pos_distance - neg_distances + margin, min=0.0)
+    #             loss_cl += loss.mean()
 
     #     loss_cl *= self.weight_loss_cl
     #     return loss_cl
-    def get_contrastive_loss(self, margin=0.2, num_negatives=3):
-        loss_cl = 0.0
-
-        # Duyệt qua từng cụm lớn
-        for group_idx, sub_clusters in self.sub_cluster.items():
-            # Bỏ qua các cụm lớn có ít hơn 2 cụm con
-            if len(sub_clusters) <= 1:
-                continue
-
-            # Duyệt qua từng cụm con
-            for sub_group_id, sub_topic_idxes in sub_clusters.items():
-                # Bỏ qua các cụm con có ít hơn 2 topic
-                if len(sub_topic_idxes) < 2:
-                    continue
-
-                # Anchor: embedding trung bình của các topic trong cụm con
-                anchor = torch.mean(self.topic_embeddings[sub_topic_idxes], dim=0, keepdim=True)
-
-                # Positive: một topic trong cụm con đó (lấy ngẫu nhiên)
-                positive_topic_idx = np.random.choice(sub_topic_idxes)
-                positive = self.topic_embeddings[positive_topic_idx].unsqueeze(0)
-
-                # Negative: 3 topic từ các cụm con khác trong cùng cụm lớn
-                negative_candidates = []
-                for neg_sub_group_id, neg_sub_topic_idxes in sub_clusters.items():
-                    if neg_sub_group_id != sub_group_id:  # Khác cụm con
-                        negative_candidates.extend(neg_sub_topic_idxes)
-
-                # Nếu cụm lớn không đủ số cụm con để tạo đủ 10 negatives, bỏ qua
-                if len(negative_candidates) < num_negatives:
-                    continue
-
-                # Lấy ngẫu nhiên 10 negative samples
-                negative_topic_idxes = np.random.choice(negative_candidates, size=num_negatives, replace=False)
-                negatives = self.topic_embeddings[negative_topic_idxes]
-
-                # Tính khoảng cách
-                pos_distance = F.pairwise_distance(anchor, positive)
-                neg_distances = F.pairwise_distance(anchor.repeat(num_negatives, 1), negatives)
-
-                # Tính triplet loss
-                loss = torch.clamp(pos_distance - neg_distances + margin, min=0.0)
-                loss_cl += loss.mean()
-
-        loss_cl *= self.weight_loss_cl
-        return loss_cl
 
 
     """ InfoNCE Loss: similarity_matrix là ma trận cosine similarity giữa các cụm (xđịnh = tâm cụm). Nó:
@@ -303,35 +259,28 @@ class IDEAS(nn.Module):
 
         # Duyệt qua từng cụm lớn
         for group_idx, group_topics in enumerate(self.group_topic):
-            # Bỏ qua các cụm lớn có ít hơn 2 topic
             if len(group_topics) < 2:
                 continue
 
-            # Anchor: embedding trung bình của các topic trong cụm lớn
             anchor = torch.mean(self.topic_embeddings[group_topics], dim=0, keepdim=True)
 
-            # Positive: một topic trong cụm lớn đó (lấy ngẫu nhiên)
             positive_topic_idx = np.random.choice(group_topics)
             positive = self.topic_embeddings[positive_topic_idx].unsqueeze(0)
 
-            # Negative: 10 topic từ các cụm lớn khác
             negative_candidates = []
             for neg_group_idx, neg_group_topics in enumerate(self.group_topic):
-                if neg_group_idx != group_idx:  # Khác cụm lớn
+                if neg_group_idx != group_idx:  
                     negative_candidates.extend(neg_group_topics)
 
             if len(negative_candidates) < num_negatives:
                 continue
 
-            # Lấy ngẫu nhiên 10 negative samples
             negative_topic_idxes = np.random.choice(negative_candidates, size=num_negatives, replace=False)
             negatives = self.topic_embeddings[negative_topic_idxes]
 
-            # Tính khoảng cách
             pos_distance = F.pairwise_distance(anchor, positive)
             neg_distances = F.pairwise_distance(anchor.repeat(num_negatives, 1), negatives)
 
-            # Tính triplet loss
             loss = torch.clamp(pos_distance - neg_distances + margin, min=0.0)
             loss_cl_large += loss.mean()
 
@@ -344,53 +293,37 @@ class IDEAS(nn.Module):
         margin = 0.2 
         num_negatives = 10
 
-        for group_idx, sub_clusters in self.sub_cluster.items():
-            if len(sub_clusters) <= 1:
-                continue
+        # Duyệt qua từng cụm lớn
+        for group_idx, group_topics in enumerate(self.group_topic):
+            # Duyệt qua từng topic trong cụm lớn 
+            for anchor_topic_idx in group_topics:
+                anchor_words_idxes = self.topics[self.topic_index_mapping[anchor_topic_idx]]
 
-            for sub_group_id, sub_topic_idxes in sub_clusters.items():
-                # Bỏ qua các cụm con có ít hơn 2 topic
-                if len(sub_topic_idxes) < 2:
+                if len(anchor_words_idxes) < 1:
                     continue
 
-                # Lấy danh sách các topic (word_index) trong cụm con hiện tại
-                # sub_topic_words = [self.topics[topic_idx] for topic_idx in sub_topic_idxes]
-                sub_topic_words = [self.topics[self.topic_index_mapping[topic_idx]] for topic_idx in sub_topic_idxes]
+                anchor = torch.mean(self.word_embeddings[anchor_words_idxes], dim=0, keepdim=True)
+                
+                positive_word_idx = np.random.choice(anchor_words_idxes)
+                positive = self.word_embeddings[positive_word_idx].unsqueeze(0)
 
-                # Duyệt qua từng topic con trong cụm lớn
-                for anchor_topic_idx, anchor_words_idxes in zip(sub_topic_idxes, sub_topic_words):
-                    if len(anchor_words_idxes) < 1:
-                        continue
-
-                    # Anchor: embedding trung bình của các từ trong topic con
-                    anchor = torch.mean(self.word_embeddings[anchor_words_idxes], dim=0, keepdim=True)
-
-                    # Positive: một từ trong topic con đó (lấy ngẫu nhiên hoặc chọn top word)
-                    # Ví dụ: Lấy ngẫu nhiên
-                    positive_word_idx = np.random.choice(anchor_words_idxes)
-                    positive = self.word_embeddings[positive_word_idx].unsqueeze(0)
-
-                    # Negative: một từ từ một topic con khác trong cùng cụm lớn
-                    negative_candidates = []
-                    for neg_sub_group_id, neg_sub_topic_idxes in sub_clusters.items():
-                        if neg_sub_group_id != sub_group_id: # khác topic con
-                            for topic_idx in neg_sub_topic_idxes:
-                                # negative_candidates.extend(self.topics[topic_idx])
-                                negative_candidates.extend(self.topics[self.topic_index_mapping[topic_idx]])
-
-                    if len(negative_candidates) < num_negatives:
-                        continue
-                    # Lấy ngẫu nhiên 5 negative sample
-                    negative_word_idx = np.random.choice(negative_candidates)
-                    negative = self.word_embeddings[negative_word_idx].unsqueeze(0)
-
-                    # Tính khoảng cách
-                    pos_distance = F.pairwise_distance(anchor, positive)
-                    neg_distance = F.pairwise_distance(anchor.repeat(num_negatives, 1), negative)
-
-                    # Tính triplet loss
-                    loss = torch.clamp(pos_distance - neg_distance + margin, min=0.0)
-                    loss_cl_words += loss.mean()
+                negative_candidates = []
+                # Lấy các từ từ các topic khác
+                for neg_topic_idx in range(self.num_topics):
+                    if neg_topic_idx not in group_topics:
+                        negative_candidates.extend(self.topics[self.topic_index_mapping[neg_topic_idx]])
+                
+                if len(negative_candidates) < num_negatives:
+                    continue
+                
+                negative_word_idxes = np.random.choice(negative_candidates, size=num_negatives, replace=False)
+                negatives = self.word_embeddings[negative_word_idxes]
+                
+                pos_distance = F.pairwise_distance(anchor, positive)
+                neg_distances = F.pairwise_distance(anchor.repeat(num_negatives, 1), negatives)
+                
+                loss = torch.clamp(pos_distance - neg_distances + margin, min=0.0)
+                loss_cl_words += loss.mean()
 
         loss_cl_words *= self.weight_loss_cl_words
         return loss_cl_words
@@ -470,7 +403,8 @@ class IDEAS(nn.Module):
         return self.matrixP
 
     def get_loss_TP(self, minibatch_indices):
-        minibatch_embeddings = self.doc_embeddings[minibatch_indices]
+        document_prj = self.document_emb_prj(self.doc_embeddings)
+        minibatch_embeddings = document_prj[minibatch_indices]
         cost = self.pairwise_euclidean_distance(minibatch_embeddings, minibatch_embeddings) \
            + 1e1 * torch.ones(minibatch_embeddings.size(0), minibatch_embeddings.size(0)).to(minibatch_embeddings.device)
 
