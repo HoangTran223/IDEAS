@@ -2,7 +2,7 @@
 from torch import nn
 
 class TP(nn.Module):
-    def __init__(self, weight_loss_TP, sinkhorn_alpha, OT_max_iter=1000, stopThr=.5e-2):
+    def __init__(self, weight_loss_TP, sinkhorn_alpha, OT_max_iter=5000, stopThr=.5e-2):
         super().__init__()
 
         self.sinkhorn_alpha = sinkhorn_alpha

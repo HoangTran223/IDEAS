@@ -26,7 +26,7 @@ class IDEAS(nn.Module):
                  weight_loss_ECR=250.0, weight_loss_TP = 250.0, alpha_TP = 20.0, threshold_cl_large = 0.5,
                  DT_alpha: float=3.0, weight_loss_DT_ETP = 10.0, threshold_cl = 0.5, vocab = None,
                  weight_loss_cl = 1.0, weight_loss_cl_large = 1.0, num_large_clusters = 5, num_sub_clusters = 3,
-                 alpha_GR=20.0, alpha_ECR=20.0, sinkhorn_alpha = 20.0, sinkhorn_max_iter=1000):
+                 alpha_GR=20.0, alpha_ECR=20.0, sinkhorn_alpha = 20.0, sinkhorn_max_iter=5000):
         super().__init__()
 
         self.threshold_epochs = threshold_epochs
