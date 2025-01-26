@@ -179,7 +179,7 @@ class IDEAS(nn.Module):
                     continue
                 # Tạo embedding cho cụm = tính trung bình
                 sub_embeddings = self.topic_embeddings[sub_topic]
-                mean_embedding = torch.mean(sub_embeddings, dim=0, keepdim= True) # mean embedding for each sub cluster
+                mean_embedding = torch.mean(sub_embeddings, dim=0, keepdim= True) 
                 embeddings.append(mean_embedding)
 
             if len(embeddings) < 2:
@@ -189,13 +189,10 @@ class IDEAS(nn.Module):
             norm_embeddings = F.normalize(embeddings, p=2, dim=1)
             similarity_matrix = torch.mm(norm_embeddings, norm_embeddings.T) # (num_sub_clusters, num_sub_clusters)
 
-            # Compute the logits for the InfoNCE loss
             logits = similarity_matrix
 
             # Create the labels for the InfoNCE loss
             labels = torch.arange(logits.shape[0]).to(logits.device)
-
-            # Calculate the InfoNCE loss
             loss_cl += F.cross_entropy(logits, labels)
 
         loss_cl *= self.weight_loss_cl
