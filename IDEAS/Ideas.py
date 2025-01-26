@@ -22,7 +22,7 @@ from utils import static_utils
 class IDEAS(nn.Module):
     def __init__(self, vocab_size, data_name = '20NG', num_topics=50, num_groups=50, en_units=200, dropout=0.,
                  cluster_distribution=None, cluster_mean=None, cluster_label=None, threshold_epochs = 10,
-                 pretrained_WE=None, embed_size=200, beta_temp=0.2, num_documents=None,
+                 pretrained_WE=None, embed_size=200, beta_temp=0.2, num_documents=None, weight_loss_cl_words=1.0,
                  weight_loss_ECR=250.0, weight_loss_TP = 250.0, alpha_TP = 20.0, threshold_cl_large = 0.5,
                  DT_alpha: float=3.0, weight_loss_DT_ETP = 10.0, threshold_cl = 0.5, vocab = None,
                  weight_loss_cl = 1.0, weight_loss_cl_large = 1.0, num_large_clusters = 5, num_sub_clusters = 3,
@@ -75,8 +75,10 @@ class IDEAS(nn.Module):
         
 
         ##
+        self.weight_loss_cl_words= weight_loss_cl_words
         self.weight_loss_cl = weight_loss_cl
         self.weight_loss_cl_large = weight_loss_cl_large
+
         self.threshold_cl = threshold_cl
         self.threshold_cl_large = threshold_cl_large
 
@@ -142,31 +144,6 @@ class IDEAS(nn.Module):
                 self.sub_cluster[group_idx].setdefault(sub_cluster_id, []).append(topic_idx)
     
 
-
-    # def get_contrastive_loss(self):
-    #     loss_cl = 0.0
-    #     for group_idx, sub_clusters in self.sub_cluster.items():
-    #         for sub_group_id, sub_topic in sub_clusters.items():
-    #             if len(sub_topic) <= 1:
-    #                 continue
-
-    #             # Tạo embedding cho cụm = tính trung bình
-    #             embeddings = self.topic_embeddings[sub_topic]
-    #             mean_embedding = torch.mean(embeddings, dim=0).unsqueeze(0)
-                
-    #             norm_embeddings = F.normalize(mean_embedding, p=2, dim=1)
-    #             similarity_matrix = torch.mm(norm_embeddings, norm_embeddings.T)
-                
-    #             positive_pairs = similarity_matrix[similarity_matrix >= self.threshold_cl]
-    #             negative_pairs = similarity_matrix[similarity_matrix < self.threshold_cl]
-
-    #             loss_pos = torch.sum(F.relu(1 - positive_pairs)) 
-    #             loss_neg = torch.sum(F.relu(negative_pairs - self.threshold_cl))  
-    #             loss_cl += loss_pos + loss_neg
-
-    #     loss_cl *= self.weight_loss_cl
-    #     return loss_cl
-
     def get_contrastive_loss(self):
         loss_cl = 0.0
         for group_idx, sub_clusters in self.sub_cluster.items():
@@ -227,61 +204,61 @@ class IDEAS(nn.Module):
         loss_cl_large *= self.weight_loss_cl_large
         return loss_cl_large
 
-        # for i in range(len(self.group_topic)):
-        #     for j in range(i + 1, len(self.group_topic)):
-        #         similarity = similarity_matrix[i, j]
-                
-        #         if similarity >= self.threshold_cl_large:
-        #             loss_cl_large += F.relu(1 - similarity)  
-        #         else:
-        #             loss_cl_large += F.relu(similarity - self.threshold_cl_large) 
 
-        # loss_cl_large *= self.weight_loss_cl_large
-        # return loss_cl_large
+    def get_contrastive_loss_words(self):
+        loss_cl_words = 0.0
+        margin = 0.2 
+        num_negatives = 5
 
-    # def get_top_words(self, vocab, group_index, num_top_words=15):
-    #     beta = self.get_beta().detach().cpu().numpy()
-    #     group_beta = beta[group_index]
-    #     top_words = []
+        for group_idx, sub_clusters in self.sub_cluster.items():
+            if len(sub_clusters) <= 1:
+                continue
 
-    #     for topic_dist in group_beta:
-    #         # top_indices = np.argsort(topic_dist)[-num_top_words:][::-1]
-    #         top_indices = nlargest(num_top_words, range(len(topic_dist)), key=topic_dist.__getitem__)
-    #         #topic_words = np.array(self.vocab)[np.argsort(topic_dist)][:-(num_top_words + 1):-1]
-    #         topic_words = [self.vocab[idx] for idx in top_indices if self.vocab[idx] in self.vocab]
-    #         top_words.extend(topic_words)
+            for sub_group_id, sub_topic_idxes in sub_clusters.items():
+                # Bỏ qua các cụm con có ít hơn 2 topic
+                if len(sub_topic_idxes) < 2:
+                    continue
 
-    #     return top_words[:num_top_words]
+                # Lấy danh sách các topic (word_index) trong cụm con hiện tại
+                sub_topic_words = [self.topics[topic_idx] for topic_idx in sub_topic_idxes]
 
-    # def get_contrastive_loss_large_clusters(self):
-    #     group_top_words = {i: self.get_top_words(self.vocab, group) for i, group in enumerate(self.group_topic)}
-    #     loss_cl_large = 0.0
-    #     for i, group_i in enumerate(self.group_topic):
-    #         for j in range(i + 1, len(self.group_topic)):
-    #             group_j = self.group_topic[j]
+                # Duyệt qua từng topic con trong cụm lớn
+                for anchor_topic_idx, anchor_words_idxes in zip(sub_topic_idxes, sub_topic_words):
+                    if len(anchor_words_idxes) < 1:
+                        continue
 
-    #             top15_i = group_top_words[i]
-    #             top15_j = group_top_words[j]
-    #             similarity_matrix = self.compute_similarity(top15_i, top15_j)
+                    # Anchor: embedding trung bình của các từ trong topic con
+                    anchor = torch.mean(self.word_embeddings[anchor_words_idxes], dim=0, keepdim=True)
 
-    #             sim_avg = similarity_matrix.mean()
-    #             if sim_avg > self.threshold_cl_large:
-    #                 loss_cl_large += F.relu(1 - sim_avg)
-    #             else:
-    #                 loss_cl_large += F.relu(sim_avg - self.threshold_cl_large)
+                    # Positive: một từ trong topic con đó (lấy ngẫu nhiên hoặc chọn top word)
+                    # Ví dụ: Lấy ngẫu nhiên
+                    positive_word_idx = np.random.choice(anchor_words_idxes)
+                    positive = self.word_embeddings[positive_word_idx].unsqueeze(0)
 
-    #     loss_cl_large *= self.weight_loss_cl_large
-    #     return loss_cl_large
-    
+                    # Negative: một từ từ một topic con khác trong cùng cụm lớn
+                    negative_candidates = []
+                    for neg_sub_group_id, neg_sub_topic_idxes in sub_clusters.items():
+                        if neg_sub_group_id != sub_group_id: # khác topic con
+                            for topic_idx in neg_sub_topic_idxes:
+                                negative_candidates.extend(self.topics[topic_idx])
 
-    # def compute_similarity(self, top_words_i, top_words_j):
-    #     vec_i = torch.tensor([self.word_embeddings[self.vocab.index(word)] 
-    #                         for word in top_words_i], device=self.word_embeddings.device)
-    #     vec_j = torch.tensor([self.word_embeddings[self.vocab.index(word)] 
-    #                         for word in top_words_j], device=self.word_embeddings.device)
+                    if len(negative_candidates) < num_negatives:
+                        continue
+                    # Lấy ngẫu nhiên 5 negative sample
+                    negative_word_idx = np.random.choice(negative_candidates)
+                    negative = self.word_embeddings[negative_word_idx].unsqueeze(0)
 
-    #     similarity_matrix = F.cosine_similarity(vec_i[:, None, :], vec_j[None, :, :], dim=-1)
-    #     return similarity_matrix
+                    # Tính khoảng cách
+                    pos_distance = F.pairwise_distance(anchor, positive)
+                    neg_distance = F.pairwise_distance(anchor, repeat(num_negatives, 1), negative)
+
+                    # Tính triplet loss
+                    loss = torch.clamp(pos_distance - neg_distance + margin, min=0.0)
+                    loss_cl_words += loss.mean()
+
+        loss_cl_words *= self.weight_loss_cl_words
+        return loss_cl_words
+
 
 
     def get_beta(self):
@@ -397,13 +374,15 @@ class IDEAS(nn.Module):
         loss_TP = self.get_loss_TP(indices)
         loss_DT_ETP = self.get_loss_DT_ETP()
 
-        if epoch_id >= self.threshold_epochs and self.weight_loss_cl_large != 0 and self.weight_loss_cl != 0:
+        if epoch_id >= self.threshold_epochs and self.weight_loss_cl_large != 0 and self.weight_loss_cl != 0 and self.weight_loss_cl_words != 0:
             loss_cl_large = self.get_contrastive_loss_large_clusters()
             loss_cl = self.get_contrastive_loss()
+            loss_cl_words = self.get_contrastive_loss_words()
         
         else:
             loss_cl_large = 0.0
             loss_cl = 0.0
+            loss_cl_words = 0.0
             
         loss = loss_TM + loss_ECR + loss_TP + loss_DT_ETP + loss_cl + loss_cl_large
         rst_dict = {
@@ -421,6 +400,89 @@ class IDEAS(nn.Module):
 
 
 
+
+
+
+    # def get_contrastive_loss(self):
+    #     loss_cl = 0.0
+    #     for group_idx, sub_clusters in self.sub_cluster.items():
+    #         for sub_group_id, sub_topic in sub_clusters.items():
+    #             if len(sub_topic) <= 1:
+    #                 continue
+
+    #             # Tạo embedding cho cụm = tính trung bình
+    #             embeddings = self.topic_embeddings[sub_topic]
+    #             mean_embedding = torch.mean(embeddings, dim=0).unsqueeze(0)
+                
+    #             norm_embeddings = F.normalize(mean_embedding, p=2, dim=1)
+    #             similarity_matrix = torch.mm(norm_embeddings, norm_embeddings.T)
+                
+    #             positive_pairs = similarity_matrix[similarity_matrix >= self.threshold_cl]
+    #             negative_pairs = similarity_matrix[similarity_matrix < self.threshold_cl]
+
+    #             loss_pos = torch.sum(F.relu(1 - positive_pairs)) 
+    #             loss_neg = torch.sum(F.relu(negative_pairs - self.threshold_cl))  
+    #             loss_cl += loss_pos + loss_neg
+
+    #     loss_cl *= self.weight_loss_cl
+    #     return loss_cl
+    
+
+    # for i in range(len(self.group_topic)):
+    #     for j in range(i + 1, len(self.group_topic)):
+    #         similarity = similarity_matrix[i, j]
+            
+    #         if similarity >= self.threshold_cl_large:
+    #             loss_cl_large += F.relu(1 - similarity)  
+    #         else:
+    #             loss_cl_large += F.relu(similarity - self.threshold_cl_large) 
+
+    # loss_cl_large *= self.weight_loss_cl_large
+    # return loss_cl_large
+
+    # def get_top_words(self, vocab, group_index, num_top_words=15):
+    #     beta = self.get_beta().detach().cpu().numpy()
+    #     group_beta = beta[group_index]
+    #     top_words = []
+
+    #     for topic_dist in group_beta:
+    #         # top_indices = np.argsort(topic_dist)[-num_top_words:][::-1]
+    #         top_indices = nlargest(num_top_words, range(len(topic_dist)), key=topic_dist.__getitem__)
+    #         #topic_words = np.array(self.vocab)[np.argsort(topic_dist)][:-(num_top_words + 1):-1]
+    #         topic_words = [self.vocab[idx] for idx in top_indices if self.vocab[idx] in self.vocab]
+    #         top_words.extend(topic_words)
+
+    #     return top_words[:num_top_words]
+
+    # def get_contrastive_loss_large_clusters(self):
+    #     group_top_words = {i: self.get_top_words(self.vocab, group) for i, group in enumerate(self.group_topic)}
+    #     loss_cl_large = 0.0
+    #     for i, group_i in enumerate(self.group_topic):
+    #         for j in range(i + 1, len(self.group_topic)):
+    #             group_j = self.group_topic[j]
+
+    #             top15_i = group_top_words[i]
+    #             top15_j = group_top_words[j]
+    #             similarity_matrix = self.compute_similarity(top15_i, top15_j)
+
+    #             sim_avg = similarity_matrix.mean()
+    #             if sim_avg > self.threshold_cl_large:
+    #                 loss_cl_large += F.relu(1 - sim_avg)
+    #             else:
+    #                 loss_cl_large += F.relu(sim_avg - self.threshold_cl_large)
+
+    #     loss_cl_large *= self.weight_loss_cl_large
+    #     return loss_cl_large
+    
+
+    # def compute_similarity(self, top_words_i, top_words_j):
+    #     vec_i = torch.tensor([self.word_embeddings[self.vocab.index(word)] 
+    #                         for word in top_words_i], device=self.word_embeddings.device)
+    #     vec_j = torch.tensor([self.word_embeddings[self.vocab.index(word)] 
+    #                         for word in top_words_j], device=self.word_embeddings.device)
+
+    #     similarity_matrix = F.cosine_similarity(vec_i[:, None, :], vec_j[None, :, :], dim=-1)
+    #     return similarity_matrix
 
 
     

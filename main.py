@@ -140,6 +140,7 @@ if __name__ == "__main__":
                         num_documents=num_documents,
                         num_sub_clusters=args.num_sub_clusters,
                         num_large_clusters=args.num_large_clusters,
+                        weight_loss_cl_words = args.weight_loss_cl_words,
                         threshold_epochs=args.threshold_epochs)       
 
     model.weight_loss_DT_ETP = args.weight_loss_DT_ETP

@@ -40,6 +40,7 @@ def add_model_argument(parser):
     parser.add_argument('--num_large_clusters', type=int, default=5)
     parser.add_argument('--num_sub_clusters', type=int, default=5)
     parser.add_argument('--threshold_epochs', type=int, default=10)  
+    parser.add_argument('--weight_loss_cl_words', type=float, default=1.0)
     
     #
 
