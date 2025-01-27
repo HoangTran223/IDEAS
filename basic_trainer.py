@@ -45,102 +45,20 @@ class BasicTrainer:
             raise NotImplementedError(self.lr_scheduler)
         return lr_scheduler
 
-    # def fit_transform(self, dataset_handler, num_top_words=15, verbose=False):
-    #     self.train(dataset_handler, verbose)
-    #     top_words = self.export_top_words(dataset_handler.vocab, num_top_words)
-    
-    #     if self.model_name == 'FASTopic':
-    #         train_theta = self.test(dataset_handler.train_contextual_embed, dataset_handler.train_contextual_embed)
-    #     if self.model_name == 'IDEAS':
-    #         train_theta = self.test(dataset_handler.train_data, dataset_handler.doc_embeddings)
-    #     else:
-    #         train_theta = self.test(dataset_handler.train_data)
-
-    #     return top_words, train_theta
-
-    # def train(self, dataset_handler, verbose=False):
-    #     adam_optimizer = self.make_adam_optimizer()
-
-    #     if self.lr_scheduler:
-    #         print("===>using lr_scheduler")
-    #         self.logger.info("===>using lr_scheduler")
-    #         lr_scheduler = self.make_lr_scheduler(adam_optimizer)
-
-    #     data_size = len(dataset_handler.train_dataloader.dataset)
-
-    #     for epoch_id, epoch in enumerate(tqdm(range(1, self.epochs + 1))):
-    #         self.model.train()
-    #         loss_rst_dict = defaultdict(float)
-
-    #         for batch_id, batch in enumerate(dataset_handler.train_dataloader): 
-    #             # *inputs, indices = batch
-    #             *inputs, indices, doc_embeddings = batch
-    #             batch_data = inputs
-    #             # batch_data = inputs + [doc_embeddings]
-    #             rst_dict = self.model(indices, batch_data, epoch_id=epoch, doc_embeddings=doc_embeddings)
-    #             batch_loss = rst_dict['loss']
-
-    #             batch_loss.backward()
-    #             adam_optimizer.step()
-    #             adam_optimizer.zero_grad()
-
-    #             for key in rst_dict:
-    #                 try:
-    #                     loss_rst_dict[key] += rst_dict[key] * \
-    #                         len(batch_data['data'])
-    #                 except:
-    #                     loss_rst_dict[key] += rst_dict[key] * len(batch_data)
-
-
-    #         if self.lr_scheduler:
-    #             lr_scheduler.step()
-
-    #         if verbose and epoch % self.log_interval == 0:
-    #             output_log = f'Epoch: {epoch:03d}'
-    #             for key in loss_rst_dict:
-    #                 output_log += f' {key}: {loss_rst_dict[key] / data_size :.3f}'
-
-    #             self.logger.info(output_log)
-
-    #         if epoch_id % 70 == 0:
-    #             print(f"loss_TP: {loss_rst_dict['loss_TP']}, loss_TM: {loss_rst_dict['loss_TM']}, loss_cl: {loss_rst_dict['loss_cl']}, loss_cl_words: {loss_rst_dict['loss_cl_words']} \
-    #                 loss_ECR: {loss_rst_dict['loss_ECR']}, loss_DT_ETP: {loss_rst_dict['loss_DT_ETP']}, loss_cl_large: {loss_rst_dict['loss_cl_large']}'\n")
-    #     print(f"self.sub_cluster: {self.model.sub_cluster}\n")
-
-    # def test(self, input_data, train_data=None):
-    #     data_size = input_data.shape[0]
-    #     theta = list()
-    #     all_idx = torch.split(torch.arange(data_size), self.batch_size)
-
-    #     with torch.no_grad():
-    #         self.model.eval()
-    #         for idx in all_idx:
-    #             batch_input = input_data[idx]
-            
-    #             if self.model_name == 'FASTopic':
-    #                 batch_theta = self.model.get_theta(batch_input, train_data)
-    #             if self.model_name == 'IDEAS':
-    #                 batch_theta = self.model.get_theta(batch_input, train_data)
-    #             else:
-    #                 batch_theta = self.model.get_theta(batch_input, doc_embeddings=train_data)
-    #             theta.extend(batch_theta.cpu().tolist())
-
-    #     theta = np.asarray(theta)
-    #     return theta
-
-
     def fit_transform(self, dataset_handler, num_top_words=15, verbose=False):
         self.train(dataset_handler, verbose)
         top_words = self.export_top_words(dataset_handler.vocab, num_top_words)
     
         if self.model_name == 'FASTopic':
             train_theta = self.test(dataset_handler.train_contextual_embed, dataset_handler.train_contextual_embed)
+        if self.model_name == 'IDEAS':
+            train_theta = self.test(dataset_handler.train_data, dataset_handler.doc_embeddings)
         else:
             train_theta = self.test(dataset_handler.train_data)
 
         return top_words, train_theta
 
-    def train(self, dataset_handler, verbose=False, doc_embeddings = None):
+    def train(self, dataset_handler, verbose=False):
         adam_optimizer = self.make_adam_optimizer()
 
         if self.lr_scheduler:
@@ -155,11 +73,11 @@ class BasicTrainer:
             loss_rst_dict = defaultdict(float)
 
             for batch_id, batch in enumerate(dataset_handler.train_dataloader): 
-                *inputs, indices = batch
-                # *inputs, indices, doc_embeddings = batch
-                # batch_data = inputs
-                batch_data = inputs + [doc_embeddings]
-                rst_dict = self.model(indices, batch_data, epoch_id=epoch)
+                # *inputs, indices = batch
+                *inputs, indices, doc_embeddings = batch
+                batch_data = inputs
+                # batch_data = inputs + [doc_embeddings]
+                rst_dict = self.model(indices, batch_data, epoch_id=epoch, doc_embeddings=doc_embeddings)
                 batch_loss = rst_dict['loss']
 
                 batch_loss.backward()
@@ -201,12 +119,94 @@ class BasicTrainer:
             
                 if self.model_name == 'FASTopic':
                     batch_theta = self.model.get_theta(batch_input, train_data)
+                if self.model_name == 'IDEAS':
+                    batch_theta = self.model.get_theta(batch_input, train_data)
                 else:
-                    batch_theta = self.model.get_theta(batch_input)
+                    batch_theta = self.model.get_theta(batch_input, doc_embeddings=train_data)
                 theta.extend(batch_theta.cpu().tolist())
 
         theta = np.asarray(theta)
         return theta
+
+
+    # def fit_transform(self, dataset_handler, num_top_words=15, verbose=False):
+    #     self.train(dataset_handler, verbose)
+    #     top_words = self.export_top_words(dataset_handler.vocab, num_top_words)
+    
+    #     if self.model_name == 'FASTopic':
+    #         train_theta = self.test(dataset_handler.train_contextual_embed, dataset_handler.train_contextual_embed)
+    #     else:
+    #         train_theta = self.test(dataset_handler.train_data)
+
+    #     return top_words, train_theta
+
+    # def train(self, dataset_handler, verbose=False, doc_embeddings = None):
+    #     adam_optimizer = self.make_adam_optimizer()
+
+    #     if self.lr_scheduler:
+    #         print("===>using lr_scheduler")
+    #         self.logger.info("===>using lr_scheduler")
+    #         lr_scheduler = self.make_lr_scheduler(adam_optimizer)
+
+    #     data_size = len(dataset_handler.train_dataloader.dataset)
+
+    #     for epoch_id, epoch in enumerate(tqdm(range(1, self.epochs + 1))):
+    #         self.model.train()
+    #         loss_rst_dict = defaultdict(float)
+
+    #         for batch_id, batch in enumerate(dataset_handler.train_dataloader): 
+    #             *inputs, indices = batch
+    #             # *inputs, indices, doc_embeddings = batch
+    #             # batch_data = inputs
+    #             batch_data = inputs + [doc_embeddings]
+    #             rst_dict = self.model(indices, batch_data, epoch_id=epoch)
+    #             batch_loss = rst_dict['loss']
+
+    #             batch_loss.backward()
+    #             adam_optimizer.step()
+    #             adam_optimizer.zero_grad()
+
+    #             for key in rst_dict:
+    #                 try:
+    #                     loss_rst_dict[key] += rst_dict[key] * \
+    #                         len(batch_data['data'])
+    #                 except:
+    #                     loss_rst_dict[key] += rst_dict[key] * len(batch_data)
+
+
+    #         if self.lr_scheduler:
+    #             lr_scheduler.step()
+
+    #         if verbose and epoch % self.log_interval == 0:
+    #             output_log = f'Epoch: {epoch:03d}'
+    #             for key in loss_rst_dict:
+    #                 output_log += f' {key}: {loss_rst_dict[key] / data_size :.3f}'
+
+    #             self.logger.info(output_log)
+
+    #         if epoch_id % 70 == 0:
+    #             print(f"loss_TP: {loss_rst_dict['loss_TP']}, loss_TM: {loss_rst_dict['loss_TM']}, loss_cl: {loss_rst_dict['loss_cl']}, loss_cl_words: {loss_rst_dict['loss_cl_words']} \
+    #                 loss_ECR: {loss_rst_dict['loss_ECR']}, loss_DT_ETP: {loss_rst_dict['loss_DT_ETP']}, loss_cl_large: {loss_rst_dict['loss_cl_large']}'\n")
+    #     print(f"self.sub_cluster: {self.model.sub_cluster}\n")
+
+    # def test(self, input_data, train_data=None):
+    #     data_size = input_data.shape[0]
+    #     theta = list()
+    #     all_idx = torch.split(torch.arange(data_size), self.batch_size)
+
+    #     with torch.no_grad():
+    #         self.model.eval()
+    #         for idx in all_idx:
+    #             batch_input = input_data[idx]
+            
+    #             if self.model_name == 'FASTopic':
+    #                 batch_theta = self.model.get_theta(batch_input, train_data)
+    #             else:
+    #                 batch_theta = self.model.get_theta(batch_input)
+    #             theta.extend(batch_theta.cpu().tolist())
+
+    #     theta = np.asarray(theta)
+    #     return theta
 
 
     def export_beta(self):
