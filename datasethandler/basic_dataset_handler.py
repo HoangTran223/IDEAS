@@ -90,7 +90,18 @@ class BasicDatasetHandler:
             self.train_bow.sum(1).sum() / self.train_bow.shape[0]))
         
         ##
-        self.doc_embeddings = self.initialize_doc_embeddings_with_doc2vec(self.train_texts, self.doc2vec_size)
+        doc2vec_dir = os.path.join(dataset_dir, 'doc2vec')
+        os.makedirs(doc2vec_dir, exist_ok=True)
+        doc2vec_filepath = os.path.join(doc2vec_dir, f'doc_embeddings_{self.doc2vec_size}.npz')
+
+        if os.path.isfile(doc2vec_filepath):
+            print("===> Loading doc_embeddings from file...")
+            self.doc_embeddings = np.load(doc2vec_filepath)['arr_0']
+        else:
+            self.doc_embeddings = self.initialize_doc_embeddings_with_doc2vec(self.train_texts, self.doc2vec_size)
+            print("===> Saving doc_embeddings to file...")
+            np.savez_compressed(doc2vec_filepath, arr_0=self.doc_embeddings)
+            
 
         if contextual_embed:
             if os.path.isfile(os.path.join(dataset_dir, 'with_bert', 'train_bert.npz')):

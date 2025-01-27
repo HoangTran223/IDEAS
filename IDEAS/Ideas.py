@@ -88,11 +88,11 @@ class IDEAS(nn.Module):
         self.matrixP = None
         self.DT_ETP = DT_ETP(weight_loss_DT_ETP, DT_alpha)
 
-        #self.doc_embeddings = torch.empty((self.num_documents, self.num_documents))
-        self.doc_embeddings = nn.Parameter(doc_embeddings)
+        # self.doc_embeddings = torch.empty((self.num_documents, self.num_documents))
+        # self.doc_embeddings = nn.Parameter(doc_embeddings)
+        # nn.init.trunc_normal_(self.doc_embeddings, std=0.1)
 
-        nn.init.trunc_normal_(self.doc_embeddings, std=0.1)
-        self.doc_embeddings = nn.Parameter(F.normalize(self.doc_embeddings))
+        self.doc_embeddings = doc_embeddings
         self.group_topic = None
         self.sub_cluster = None
         self.embed_size = embed_size
@@ -102,7 +102,7 @@ class IDEAS(nn.Module):
         self.TP = TP(weight_loss_TP, alpha_TP)
 
         self.document_emb_prj = nn.Sequential(
-            nn.Linear(self.embed_size, self.word_embeddings.shape[1]),
+            nn.Linear(self.embed_size, self.num_topics),
             nn.ReLU(),
             nn.Dropout(dropout)
         )
@@ -397,15 +397,14 @@ class IDEAS(nn.Module):
         self.matrixP = torch.ones(
             (num_minibatch, num_minibatch), device=self.topic_embeddings.device) / num_minibatch
         
-        norm_embeddings = minibatch_embeddings / (torch.norm(minibatch_embeddings, dim=1, keepdim=True).clamp(min=1e-6))
+        norm_embeddings = F.normalize(minibatch_embeddings, p=2, dim=1).clamp(min=1e-6)
         self.matrixP = torch.matmul(norm_embeddings, norm_embeddings.T)
         self.matrixP.fill_diagonal_(0)
         self.matrixP = self.matrixP.clamp(min=1e-4)
         return self.matrixP
 
     def get_loss_TP(self, minibatch_indices):
-        document_prj = self.document_emb_prj(self.doc_embeddings)
-        minibatch_embeddings = document_prj[minibatch_indices]
+        minibatch_embeddings = self.doc_embeddings[minibatch_indices]
         cost = self.pairwise_euclidean_distance(minibatch_embeddings, minibatch_embeddings) \
            + 1e1 * torch.ones(minibatch_embeddings.size(0), minibatch_embeddings.size(0)).to(minibatch_embeddings.device)
 
