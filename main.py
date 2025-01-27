@@ -144,7 +144,7 @@ if __name__ == "__main__":
                         weight_loss_cl_words = args.weight_loss_cl_words,
                         threshold_epochs=args.threshold_epochs,
                         doc_embeddings=torch.tensor(dataset.doc_embeddings).float().to(args.device),
-                        embed_size=dataset.doc2vec_size
+                        doc2vec_size=dataset.doc2vec_size
                         )    
 
     model.weight_loss_DT_ETP = args.weight_loss_DT_ETP

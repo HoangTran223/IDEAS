@@ -377,20 +377,11 @@ class IDEAS(nn.Module):
         return loss_ECR
     
 
-    # def pairwise_euclidean_distance(self, x, y):
-    #     cost = torch.sum(x ** 2, axis=1, keepdim=True) + \
-    #         torch.sum(y ** 2, dim=1) - 2 * torch.matmul(x, y.t())
-    #     return cost
     def pairwise_euclidean_distance(self, x, y):
-        x_norm = torch.sum(x ** 2, dim=1, keepdim=True)  # (num_documents, 1)
-        y_norm = torch.sum(y ** 2, dim=1, keepdim=True)  # (num_topics, 1)
-        y_t = torch.transpose(y, 0, 1)  # (embed_size, num_topics)
-        xy = torch.matmul(x, y_t)  # (num_documents, num_topics)
+        cost = torch.sum(x ** 2, axis=1, keepdim=True) + \
+            torch.sum(y ** 2, dim=1) - 2 * torch.matmul(x, y.t())
+        return cost
 
-        # (num_documents, num_topics)
-        distances = x_norm + torch.transpose(y_norm, 0, 1) - 2 * xy
-
-        return distances
 
 
     def create_matrixP(self, minibatch_indices):
