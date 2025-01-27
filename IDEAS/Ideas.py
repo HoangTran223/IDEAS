@@ -103,7 +103,7 @@ class IDEAS(nn.Module):
 
         print(f"chieuX cua doc_embeddings {len(self.doc_embeddings)}")
         print(f"chieuY cua doc_embeddings : {len(self.doc_embeddings[0])}")
-        
+
         self.topics = []
         self.topic_index_mapping = {}
 
@@ -331,7 +331,7 @@ class IDEAS(nn.Module):
     def forward(self, indices, input, epoch_id=None, doc_embeddings=None):
 
         bow = input[0]
-        contextual_emb = input[1]
+        # contextual_emb = input[1]
 
         rep, mu, logvar = self.get_representation(bow)
         loss_KL = self.compute_loss_KL(mu, logvar)
