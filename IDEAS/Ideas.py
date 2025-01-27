@@ -325,7 +325,7 @@ class IDEAS(nn.Module):
         return loss_DT_ETP
 
 
-    def forward(self, indices, input, epoch_id=None):
+    def forward(self, indices, input, epoch_id=None, doc_embeddings=None):
 
         bow = input[0]
         contextual_emb = input[1]
@@ -342,8 +342,8 @@ class IDEAS(nn.Module):
         loss_TM = recon_loss + loss_KL
 
         loss_ECR = self.get_loss_ECR()
-        loss_TP = self.get_loss_TP(indices)
-        loss_DT_ETP = self.get_loss_DT_ETP()
+        loss_TP = self.get_loss_TP(doc_embeddings, indices)
+        loss_DT_ETP = self.get_loss_DT_ETP(doc_embeddings)
 
         loss_cl_large = 0.0
         loss_cl_words = 0.0
