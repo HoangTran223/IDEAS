@@ -72,13 +72,12 @@ class RawDatasetHandler:
 
 class BasicDatasetHandler:
     def __init__(self, dataset_dir, batch_size=200, read_labels=False, device='cpu', 
-                    as_tensor=False, contextual_embed=False, doc2vec_size=384):
+                    as_tensor=False, contextual_embed=False):
         # train_bow: NxV
         # test_bow: Nxv
         # word_emeddings: VxD
         # vocab: V, ordered by word id.
 
-        self.doc2vec_size = doc2vec_size
 
         self.load_data(dataset_dir, read_labels)
         self.vocab_size = len(self.vocab)
@@ -91,17 +90,11 @@ class BasicDatasetHandler:
         
         ##
         doc2vec_dir = os.path.join(dataset_dir, 'doc2vec')
-        os.makedirs(doc2vec_dir, exist_ok=True)
-        doc2vec_filepath = os.path.join(doc2vec_dir, f'doc_embeddings_{self.doc2vec_size}.npz')
+        doc2vec_filepath = os.path.join(doc2vec_dir, f'doc_embeddings_384_.npz')
 
         if os.path.isfile(doc2vec_filepath):
             print("===> Loading doc_embeddings from file...")
             self.doc_embeddings = np.load(doc2vec_filepath)['arr_0']
-        else:
-            self.doc_embeddings = self.initialize_doc_embeddings_with_doc2vec(self.train_texts)
-            print("===> Saving doc_embeddings to file...")
-            np.savez_compressed(doc2vec_filepath, arr_0=self.doc_embeddings)
-
 
         if contextual_embed:
             if os.path.isfile(os.path.join(dataset_dir, 'with_bert', 'train_bert.npz')):
@@ -160,13 +153,13 @@ class BasicDatasetHandler:
             else:
                 """train_dataset = DatasetHandler(self.train_data)
                 test_dataset = DatasetHandler(self.test_data)"""
-                # train_dataset = TensorDataset(self.train_data, self.train_indices)
-                # test_dataset = TensorDataset(self.test_data, self.test_indices)
+                train_dataset = TensorDataset(self.train_data, self.train_indices)
+                test_dataset = TensorDataset(self.test_data, self.test_indices)
 
-                train_dataset = TensorDataset(self.train_data, self.train_indices, 
-                                            torch.tensor(self.doc_embeddings, dtype=torch.float))
-                test_dataset = TensorDataset(self.test_data, self.test_indices, 
-                                            torch.tensor(self.doc_embeddings, dtype=torch.float))
+                # train_dataset = TensorDataset(self.train_data, self.train_indices, 
+                #                             torch.tensor(self.doc_embeddings, dtype=torch.float))
+                # test_dataset = TensorDataset(self.test_data, self.test_indices, 
+                #                             torch.tensor(self.doc_embeddings, dtype=torch.float))
 
                 self.train_dataloader = DataLoader(
                     train_dataset, batch_size=batch_size, shuffle=True)
@@ -198,3 +191,12 @@ class BasicDatasetHandler:
         model = Doc2Vec(data, vector_size=self.doc2vec_size, window=5, min_count=5, workers=4, epochs=100)
         doc_embeddings = np.array([model.dv[str(i)] for i in range(len(documents))])
         return doc_embeddings
+
+
+
+
+
+
+    
+
+    self.doc2vec_size = doc2vec_size

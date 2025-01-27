@@ -166,7 +166,7 @@ if __name__ == "__main__":
 
 
     # train the model
-    trainer.train(dataset, doc_embeddings=dataset.doc_embeddings)
+    trainer.train(dataset)
 
     # save beta, theta and top words
     beta = trainer.save_beta(current_run_dir)

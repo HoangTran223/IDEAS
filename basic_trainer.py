@@ -56,7 +56,7 @@ class BasicTrainer:
 
         return top_words, train_theta
 
-    def train(self, dataset_handler, verbose=False, doc_embeddings = None):
+    def train(self, dataset_handler, verbose=False):
         adam_optimizer = self.make_adam_optimizer()
 
         if self.lr_scheduler:
@@ -73,8 +73,8 @@ class BasicTrainer:
             for batch_id, batch in enumerate(dataset_handler.train_dataloader): 
                 *inputs, indices = batch
                 # *inputs, indices, doc_embeddings = batch
-                # batch_data = inputs
-                batch_data = inputs + [doc_embeddings]
+                batch_data = inputs
+                # batch_data = inputs + [doc_embeddings]
                 rst_dict = self.model(indices, batch_data, epoch_id=epoch)
                 batch_loss = rst_dict['loss']
 
