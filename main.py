@@ -59,9 +59,10 @@ if __name__ == "__main__":
     cluster_mean = np.load(os.path.join(DATA_DIR, str(args.dataset), "LLM", "cluster_mean.npz"))['arr_0']
     cluster_label = [np.argmax(cluster_distribution[i]) for i in range(len(cluster_distribution))]
 
+    ##
     dataset = datasethandler.BasicDatasetHandler(
         os.path.join(DATA_DIR, args.dataset), device=args.device, read_labels=read_labels,
-        as_tensor=True, contextual_embed=True)
+        as_tensor=True, contextual_embed=False)
 
     pretrainWE = scipy.sparse.load_npz(os.path.join(
         DATA_DIR, args.dataset, "word_embeddings.npz")).toarray()

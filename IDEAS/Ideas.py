@@ -101,6 +101,9 @@ class IDEAS(nn.Module):
             nn.Dropout(dropout)
         )
 
+        print(f"chieuX cua doc_embeddings {len(self.doc_embeddings)}")
+        print(f"chieuY cua doc_embeddings : {len(self.doc_embeddings[0])}")
+        
         self.topics = []
         self.topic_index_mapping = {}
 

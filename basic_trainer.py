@@ -51,6 +51,8 @@ class BasicTrainer:
     
         if self.model_name == 'FASTopic':
             train_theta = self.test(dataset_handler.train_contextual_embed, dataset_handler.train_contextual_embed)
+        if self.model_name == 'IDEAS':
+            train_theta = self.test(dataset_handler.train_data, dataset_handler.doc_embeddings)
         else:
             train_theta = self.test(dataset_handler.train_data)
 
@@ -73,9 +75,9 @@ class BasicTrainer:
             for batch_id, batch in enumerate(dataset_handler.train_dataloader): 
                 # *inputs, indices = batch
                 *inputs, indices, doc_embeddings = batch
-                # batch_data = inputs
-                batch_data = inputs + [doc_embeddings]
-                rst_dict = self.model(indices, batch_data, epoch_id=epoch)
+                batch_data = inputs
+                # batch_data = inputs + [doc_embeddings]
+                rst_dict = self.model(indices, batch_data, epoch_id=epoch, doc_embeddings=doc_embeddings)
                 batch_loss = rst_dict['loss']
 
                 batch_loss.backward()
@@ -117,8 +119,10 @@ class BasicTrainer:
             
                 if self.model_name == 'FASTopic':
                     batch_theta = self.model.get_theta(batch_input, train_data)
+                if self.model_name == 'IDEAS':
+                    batch_theta = self.model.get_theta(batch_input, train_data)
                 else:
-                    batch_theta = self.model.get_theta(batch_input)
+                    batch_theta = self.model.get_theta(batch_input, doc_embeddings=train_data)
                 theta.extend(batch_theta.cpu().tolist())
 
         theta = np.asarray(theta)
