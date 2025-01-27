@@ -101,9 +101,6 @@ class IDEAS(nn.Module):
             nn.Dropout(dropout)
         )
 
-        print(f"chieuX cua doc_embeddings {len(self.doc_embeddings)}")
-        print(f"chieuY cua doc_embeddings : {len(self.doc_embeddings[0])}")
-
         self.topics = []
         self.topic_index_mapping = {}
 
@@ -311,7 +308,7 @@ class IDEAS(nn.Module):
         return self.matrixP
 
     def get_loss_TP(self, doc_embeddings, indices):
-        minibatch_embeddings = self.doc_embeddings[indices]
+        minibatch_embeddings = self.doc_embeddings[indices].to(doc_embeddings.device)
         # minibatch_indices = minibatch_indices.to(doc_embeddings.device)
         # minibatch_embeddings = doc_embeddings[minibatch_indices]
         cost = self.pairwise_euclidean_distance(minibatch_embeddings, minibatch_embeddings) \
