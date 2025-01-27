@@ -72,13 +72,13 @@ class RawDatasetHandler:
 
 class BasicDatasetHandler:
     def __init__(self, dataset_dir, batch_size=200, read_labels=False, device='cpu', 
-                    as_tensor=False, contextual_embed=False):
+                    as_tensor=False, contextual_embed=False, doc2vec_size=384):
         # train_bow: NxV
         # test_bow: Nxv
         # word_emeddings: VxD
         # vocab: V, ordered by word id.
 
-
+        self.doc2vec_size = doc2vec_size    
         self.load_data(dataset_dir, read_labels)
         self.vocab_size = len(self.vocab)
 
@@ -95,6 +95,15 @@ class BasicDatasetHandler:
         if os.path.isfile(doc2vec_filepath):
             print("===> Loading doc_embeddings from file...")
             self.doc_embeddings = np.load(doc2vec_filepath)['arr_0']
+        
+        doc2vec_test_filepath = os.path.join(doc2vec_dir, f'doc_embeddings_test_{self.doc2vec_size}_.npz') # Sửa tên file
+        if os.path.isfile(doc2vec_test_filepath):
+            print("===> Loading test doc_embeddings from file...")
+            self.test_doc_embeddings = np.load(doc2vec_test_filepath)['arr_0']
+        else:
+            self.test_doc_embeddings = self.initialize_doc_embeddings_with_doc2vec(self.test_texts, self.doc2vec_size)
+            print("===> Saving test doc_embeddings to file...")
+            np.savez_compressed(doc2vec_test_filepath, arr_0=self.test_doc_embeddings)
 
         if contextual_embed:
             if os.path.isfile(os.path.join(dataset_dir, 'with_bert', 'train_bert.npz')):
@@ -184,3 +193,9 @@ class BasicDatasetHandler:
             self.test_labels = np.loadtxt(f'{path}/test_labels.txt', dtype=int)
 
         self.vocab = file_utils.read_text(f'{path}/vocab.txt')
+
+    def initialize_doc_embeddings_with_doc2vec(self, documents, embed_size):
+        data = [TaggedDocument(words = doc, tags = [str(i)]) for i, doc in enumerate(documents)]
+        model = Doc2Vec(data, vector_size=embed_size, window=5, min_count=5, workers=4, epochs=100) # Tăng epochs lên 100
+        doc_embeddings = np.array([model.dv[str(i)] for i in range(len(documents))])
+        return doc_embeddings
