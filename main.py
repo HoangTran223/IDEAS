@@ -230,7 +230,7 @@ if __name__ == "__main__":
     dataset = datasethandler.BasicDatasetHandler(
         os.path.join(DATA_DIR, args.dataset), device=args.device, read_labels=read_labels,
         as_tensor=True, contextual_embed=True,
-        doc2vec_size=200) ##
+        doc2vec_size=384) ##
 
     pretrainWE = scipy.sparse.load_npz(os.path.join(
         DATA_DIR, args.dataset, "word_embeddings.npz")).toarray()
