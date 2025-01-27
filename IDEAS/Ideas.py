@@ -94,8 +94,6 @@ class IDEAS(nn.Module):
         self.doc_embeddings = doc_embeddings
         self.group_topic = None
         self.sub_cluster = None
-        self.embed_size = embed_size
-        self.doc2vec_size = doc2vec_size
 
         self.TP = TP(weight_loss_TP, alpha_TP)
 
@@ -103,7 +101,7 @@ class IDEAS(nn.Module):
         print(f"chieuY cua doc_embeddings : {len(self.doc_embeddings[0])}")
 
         self.document_emb_prj = nn.Sequential(
-            nn.Linear(self.doc2vec_size, self.embed_size), 
+            nn.Linear(doc2vec_size, embed_size), 
             nn.ReLU(),
             nn.Dropout(dropout)
         )
