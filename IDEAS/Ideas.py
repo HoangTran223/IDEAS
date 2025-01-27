@@ -322,9 +322,9 @@ class IDEAS(nn.Module):
     
     
     def get_loss_DT_ETP(self, doc_embeddings):
-        print(f"doc_embeddings device: {doc_embeddings.device}")
+        # print(f"doc_embeddings device: {doc_embeddings.device}")
         document_prj = self.document_emb_prj(doc_embeddings)
-        print(f"self.document_emb_prj device: {next(self.document_emb_prj.parameters()).device}")
+        # print(f"self.document_emb_prj device: {next(self.document_emb_prj.parameters()).device}")
 
         loss_DT_ETP, transp_DT = self.DT_ETP(document_prj, self.topic_embeddings)
         return loss_DT_ETP
