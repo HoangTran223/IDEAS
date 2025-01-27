@@ -298,8 +298,9 @@ class IDEAS(nn.Module):
     #     self.matrixP = self.matrixP.clamp(min=1e-4)
     #     return self.matrixP
 
-    def create_matrixP(self, minibatch_embeddings):
-        num_minibatch = minibatch_embeddings.size(0)
+    def create_matrixP(self, minibatch_embeddings, indices):
+        # num_minibatch = minibatch_embeddings.size(0)
+        num_minibatch = len(indices)
         self.matrixP = torch.ones(
             (num_minibatch, num_minibatch), device=self.topic_embeddings.device) / num_minibatch
 
@@ -309,15 +310,15 @@ class IDEAS(nn.Module):
         self.matrixP = self.matrixP.clamp(min=1e-4)
         return self.matrixP
 
-    def get_loss_TP(self, doc_embeddings, minibatch_indices):
-        # minibatch_embeddings = self.doc_embeddings[minibatch_indices]
-        minibatch_indices = minibatch_indices.to(doc_embeddings.device)
-        minibatch_embeddings = doc_embeddings[minibatch_indices]
+    def get_loss_TP(self, doc_embeddings, indices):
+        minibatch_embeddings = self.doc_embeddings[minibatch_indices]
+        # minibatch_indices = minibatch_indices.to(doc_embeddings.device)
+        # minibatch_embeddings = doc_embeddings[minibatch_indices]
         cost = self.pairwise_euclidean_distance(minibatch_embeddings, minibatch_embeddings) \
            + 1e1 * torch.ones(minibatch_embeddings.size(0), minibatch_embeddings.size(0)).to(minibatch_embeddings.device)
 
         # self.matrixP = self.create_matrixP(minibatch_indices)
-        self.matrixP = self.create_matrixP(minibatch_embeddings)
+        self.matrixP = self.create_matrixP(minibatch_embeddings, indices)
         loss_TP = self.TP(cost, self.matrixP)
         return loss_TP
     

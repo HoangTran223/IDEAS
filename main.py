@@ -167,6 +167,57 @@ if __name__ == "__main__":
     # train the model
     trainer.train(dataset)
 
+    # save beta, theta and top words
+    beta = trainer.save_beta(current_run_dir)
+    train_theta, test_theta = trainer.save_theta(dataset, current_run_dir)
+    top_words_10 = trainer.save_top_words(
+        dataset.vocab, 10, current_run_dir)
+    top_words_15 = trainer.save_top_words(
+        dataset.vocab, 15, current_run_dir)
+    top_words_20 = trainer.save_top_words(
+        dataset.vocab, 20, current_run_dir)
+    top_words_25 = trainer.save_top_words(
+        dataset.vocab, 25, current_run_dir)
+
+    # argmax of train and test theta
+    train_theta_argmax = train_theta.argmax(axis=1)
+    test_theta_argmax = test_theta.argmax(axis=1)        
+
+    TD_15 = evaluations.compute_topic_diversity(
+        top_words_15, _type="TD")
+    print(f"TD_15: {TD_15:.5f}")
+
+
+    # evaluating clustering
+    if read_labels:
+        clustering_results = evaluations.evaluate_clustering(
+            test_theta, dataset.test_labels)
+        print(f"NMI: ", clustering_results['NMI'])
+        print(f'Purity: ', clustering_results['Purity'])
+
+
+    TC_15_list, TC_15 = evaluations.topic_coherence.TC_on_wikipedia(
+        os.path.join(current_run_dir, 'top_words_15.txt'))
+    print(f"TC_15: {TC_15:.5f}")
+
+    filename = f"results_{args.dataset}_topics{args.num_topics}_epochs{args.epochs}_w_ECR{args.weight_ECR}_w_GR{args.weight_GR}_w_OT{args.weight_OT}_w_InfoNCE{args.weight_InfoNCE}.txt"
+    filename = filename.replace(' ', '_')
+    filepath = os.path.join(current_run_dir, filename)
+    with open(filepath, 'w') as f:
+        if read_labels:
+            f.write(f"NMI: {clustering_results['NMI']}\n")
+            f.write(f"Purity: {clustering_results['Purity']}\n")
+        else:
+            f.write("NMI: N/A\n")
+            f.write("Purity: N/A\n")
+        f.write(f"TD_15: {TD_15:.5f}\n")
+        f.write(f"TC_15: {TC_15:.5f}\n")
+
+    print(f"Done in {filepath}")
+
+
+
+
 
 
 # from utils import config, log, miscellaneous, seed
@@ -338,52 +389,3 @@ if __name__ == "__main__":
 
 #     # train the model
 #     trainer.train(dataset, doc_embeddings=dataset.doc_embeddings)
-
-    # save beta, theta and top words
-    beta = trainer.save_beta(current_run_dir)
-    train_theta, test_theta = trainer.save_theta(dataset, current_run_dir)
-    top_words_10 = trainer.save_top_words(
-        dataset.vocab, 10, current_run_dir)
-    top_words_15 = trainer.save_top_words(
-        dataset.vocab, 15, current_run_dir)
-    top_words_20 = trainer.save_top_words(
-        dataset.vocab, 20, current_run_dir)
-    top_words_25 = trainer.save_top_words(
-        dataset.vocab, 25, current_run_dir)
-
-    # argmax of train and test theta
-    train_theta_argmax = train_theta.argmax(axis=1)
-    test_theta_argmax = test_theta.argmax(axis=1)        
-
-    TD_15 = evaluations.compute_topic_diversity(
-        top_words_15, _type="TD")
-    print(f"TD_15: {TD_15:.5f}")
-
-
-    # evaluating clustering
-    if read_labels:
-        clustering_results = evaluations.evaluate_clustering(
-            test_theta, dataset.test_labels)
-        print(f"NMI: ", clustering_results['NMI'])
-        print(f'Purity: ', clustering_results['Purity'])
-
-
-    TC_15_list, TC_15 = evaluations.topic_coherence.TC_on_wikipedia(
-        os.path.join(current_run_dir, 'top_words_15.txt'))
-    print(f"TC_15: {TC_15:.5f}")
-
-    filename = f"results_{args.dataset}_topics{args.num_topics}_epochs{args.epochs}_w_ECR{args.weight_ECR}_w_GR{args.weight_GR}_w_OT{args.weight_OT}_w_InfoNCE{args.weight_InfoNCE}.txt"
-    filename = filename.replace(' ', '_')
-    filepath = os.path.join(current_run_dir, filename)
-    with open(filepath, 'w') as f:
-        if read_labels:
-            f.write(f"NMI: {clustering_results['NMI']}\n")
-            f.write(f"Purity: {clustering_results['Purity']}\n")
-        else:
-            f.write("NMI: N/A\n")
-            f.write("Purity: N/A\n")
-        f.write(f"TD_15: {TD_15:.5f}\n")
-        f.write(f"TC_15: {TC_15:.5f}\n")
-
-    print(f"Done in {filepath}")
-
