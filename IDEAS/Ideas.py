@@ -283,30 +283,43 @@ class IDEAS(nn.Module):
         return cost
 
 
-    def create_matrixP(self, minibatch_indices):
-        num_minibatch = len(minibatch_indices)
-        minibatch_embeddings = self.doc_embeddings[minibatch_indices]
+    # def create_matrixP(self, minibatch_indices):
+    #     num_minibatch = len(minibatch_indices)
+    #     minibatch_embeddings = self.doc_embeddings[minibatch_indices]
+    #     self.matrixP = torch.ones(
+    #         (num_minibatch, num_minibatch), device=self.topic_embeddings.device) / num_minibatch
+        
+    #     norm_embeddings = F.normalize(minibatch_embeddings, p=2, dim=1).clamp(min=1e-6)
+    #     self.matrixP = torch.matmul(norm_embeddings, norm_embeddings.T)
+    #     self.matrixP.fill_diagonal_(0)
+    #     self.matrixP = self.matrixP.clamp(min=1e-4)
+    #     return self.matrixP
+
+    def create_matrixP(self, minibatch_embeddings):
+        num_minibatch = minibatch_embeddings.size(0)
         self.matrixP = torch.ones(
             (num_minibatch, num_minibatch), device=self.topic_embeddings.device) / num_minibatch
-        
+
         norm_embeddings = F.normalize(minibatch_embeddings, p=2, dim=1).clamp(min=1e-6)
         self.matrixP = torch.matmul(norm_embeddings, norm_embeddings.T)
         self.matrixP.fill_diagonal_(0)
         self.matrixP = self.matrixP.clamp(min=1e-4)
         return self.matrixP
 
-    def get_loss_TP(self, minibatch_indices):
-        minibatch_embeddings = self.doc_embeddings[minibatch_indices]
+    def get_loss_TP(self, doc_embeddings, minibatch_indices):
+        # minibatch_embeddings = self.doc_embeddings[minibatch_indices]
+        minibatch_embeddings = doc_embeddings
         cost = self.pairwise_euclidean_distance(minibatch_embeddings, minibatch_embeddings) \
            + 1e1 * torch.ones(minibatch_embeddings.size(0), minibatch_embeddings.size(0)).to(minibatch_embeddings.device)
 
-        self.matrixP = self.create_matrixP(minibatch_indices)
+        # self.matrixP = self.create_matrixP(minibatch_indices)
+        self.matrixP = self.create_matrixP(minibatch_embeddings)
         loss_TP = self.TP(cost, self.matrixP)
         return loss_TP
     
     
-    def get_loss_DT_ETP(self):
-        document_prj = self.document_emb_prj(self.doc_embeddings)
+    def get_loss_DT_ETP(self, doc_embeddings):
+        document_prj = self.document_emb_prj(doc_embeddings)
 
         loss_DT_ETP, transp_DT = self.DT_ETP(document_prj, self.topic_embeddings)
         return loss_DT_ETP
