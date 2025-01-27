@@ -72,7 +72,7 @@ class RawDatasetHandler:
 
 class BasicDatasetHandler:
     def __init__(self, dataset_dir, batch_size=200, read_labels=False, device='cpu', 
-                    as_tensor=False, contextual_embed=False, doc2vec_size=200):
+                    as_tensor=False, contextual_embed=False, doc2vec_size=384):
         # train_bow: NxV
         # test_bow: Nxv
         # word_emeddings: VxD
@@ -101,7 +101,7 @@ class BasicDatasetHandler:
             self.doc_embeddings = self.initialize_doc_embeddings_with_doc2vec(self.train_texts, self.doc2vec_size)
             print("===> Saving doc_embeddings to file...")
             np.savez_compressed(doc2vec_filepath, arr_0=self.doc_embeddings)
-            
+
 
         if contextual_embed:
             if os.path.isfile(os.path.join(dataset_dir, 'with_bert', 'train_bert.npz')):

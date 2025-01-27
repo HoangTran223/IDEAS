@@ -102,7 +102,7 @@ class IDEAS(nn.Module):
         self.TP = TP(weight_loss_TP, alpha_TP)
 
         self.document_emb_prj = nn.Sequential(
-            nn.Linear(self.embed_size, self.num_topics),
+            nn.Linear(384, self.embed_size),
             nn.ReLU(),
             nn.Dropout(dropout)
         )
@@ -115,14 +115,6 @@ class IDEAS(nn.Module):
         #     word: self.word_embeddings[idx].detach().cpu().numpy()
         #     for idx, word in enumerate(self.vocab)
         # }
-
-    def initialize_doc_embeddings_with_doc2vec(self, documents, embed_size):
-        data = [TaggedDocument(words = doc, tags = [str(i)]) 
-                        for i, doc in enumerate(documents)]
-        model = Doc2Vec(data, vector_size=embed_size, window=5, min_count=2, workers=4, epochs=20) 
-        doc_embeddings = [model.dv[str(i)] for i in range(len(documents))]
-        return nn.Parameter(torch.tensor(doc_embeddings, dtype=torch.float))
-
 
     def create_group_topic(self):
 
@@ -418,7 +410,6 @@ class IDEAS(nn.Module):
 
         loss_DT_ETP, transp_DT = self.DT_ETP(document_prj, self.topic_embeddings)
         return loss_DT_ETP
-
 
 
     def forward(self, indices, input, epoch_id=None):
