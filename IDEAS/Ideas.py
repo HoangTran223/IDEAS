@@ -102,11 +102,11 @@ class IDEAS(nn.Module):
         print(f"chieuX cua doc_embeddings {len(self.doc_embeddings)}")
         print(f"chieuY cua doc_embeddings : {len(self.doc_embeddings[1])}")
 
-        self.document_emb_prj = nn.Sequential(
-            nn.Linear(384, 200), 
-            nn.ReLU(),
-            nn.Dropout(dropout)
-        )
+        # self.document_emb_prj = nn.Sequential(
+        #     nn.Linear(384, 200), 
+        #     nn.ReLU(),
+        #     nn.Dropout(dropout)
+        # )
 
         print(f"chieuX cua doc_embeddings {len(self.doc_embeddings)}")
         print(f"chieuY cua doc_embeddings : {len(self.doc_embeddings[1])}")
