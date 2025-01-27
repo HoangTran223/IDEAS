@@ -13,7 +13,6 @@ from heapq import nlargest
 from sklearn.metrics import silhouette_score
 
 ##
-from gensim.models.doc2vec import Doc2Vec, TaggedDocument
 from scipy.cluster.hierarchy import linkage, fcluster
 from scipy.spatial.distance import squareform
 from sklearn.cluster import KMeans
@@ -87,10 +86,6 @@ class IDEAS(nn.Module):
         self.matrixP = None
         self.DT_ETP = DT_ETP(weight_loss_DT_ETP, DT_alpha)
 
-        # self.doc_embeddings = torch.empty((self.num_documents, self.num_documents))
-        # self.doc_embeddings = nn.Parameter(doc_embeddings)
-        # nn.init.trunc_normal_(self.doc_embeddings, std=0.1)
-
         self.doc_embeddings = doc_embeddings
         self.group_topic = None
         self.sub_cluster = None
@@ -106,49 +101,23 @@ class IDEAS(nn.Module):
             nn.Dropout(dropout)
         )
 
-        
         self.topics = []
         self.topic_index_mapping = {}
 
-        # self.topic_top_words = {}
-        # self.word_embeddings_dict = {
-        #     word: self.word_embeddings[idx].detach().cpu().numpy()
-        #     for idx, word in enumerate(self.vocab)
-        # }
 
     def create_group_topic(self):
-
         distances = torch.cdist(self.topic_embeddings, self.topic_embeddings, p=2)  
         distances = distances.detach().cpu().numpy()
 
         np.fill_diagonal(distances, 0)
         Z = linkage(distances, method='average', optimal_ordering=True) 
 
-        # Chia cụm lớn (max = self.num_large_clusters)
+        # Chia cụm lớn
         group_id = fcluster(Z, t= self.num_large_clusters, criterion='maxclust') - 1
         
         self.group_topic = [[] for _ in range(self.num_large_clusters)]
         for i in range(self.num_topics):
             self.group_topic[group_id[i]].append(i) 
-
-        # Tạo sub-clusters trong mỗi nhóm lớn
-        # self.sub_cluster = {}
-        # for group_idx, topics in enumerate(self.group_topic):  
-        #     if len(topics) < 2:
-        #         self.sub_cluster[group_idx] = {0: topics} 
-        #         continue
-            
-        #     sub_embeddings = self.topic_embeddings[topics]
-        #     sub_distances = torch.cdist(sub_embeddings, sub_embeddings, p=2).detach().cpu().numpy() 
-        #     np.fill_diagonal(sub_distances, 0)
-
-        #     sub_Z = linkage(sub_distances, method='average')
-        #     sub_group_id = fcluster(sub_Z, t= self.num_sub_clusters, criterion='maxclust') - 1
-
-        #     self.sub_cluster[group_idx] = {}
-        #     for sub_idx, topic_idx in enumerate(topics):
-        #         sub_cluster_id = sub_group_id[sub_idx]
-        #         self.sub_cluster[group_idx].setdefault(sub_cluster_id, []).append(topic_idx)
         
         topic_idx_counter = 0
         # Lấy danh sách từ trong từng topic
@@ -176,75 +145,6 @@ class IDEAS(nn.Module):
         topic_idx = torch.argmax(similarity_scores).item()
 
         return topic_idx
-
-
-    # def get_contrastive_loss(self, margin=0.2, num_negatives=3):
-    #     loss_cl = 0.0
-
-    #     # Duyệt qua từng cụm lớn
-    #     for group_idx, sub_clusters in self.sub_cluster.items():
-    #         if len(sub_clusters) <= 1:
-    #             continue
-
-    #         # Duyệt qua từng cụm con
-    #         for sub_group_id, sub_topic_idxes in sub_clusters.items():
-    #             if len(sub_topic_idxes) < 2:
-    #                 continue
-
-    #             anchor = torch.mean(self.topic_embeddings[sub_topic_idxes], dim=0, keepdim=True)
-
-    #             positive_topic_idx = np.random.choice(sub_topic_idxes)
-    #             positive = self.topic_embeddings[positive_topic_idx].unsqueeze(0)
-
-    #             negative_candidates = []
-    #             for neg_sub_group_id, neg_sub_topic_idxes in sub_clusters.items():
-    #                 if neg_sub_group_id != sub_group_id:  
-    #                     negative_candidates.extend(neg_sub_topic_idxes)
-
-    #             if len(negative_candidates) < num_negatives:
-    #                 continue
-
-    #             negative_topic_idxes = np.random.choice(negative_candidates, size=num_negatives, replace=False)
-    #             negatives = self.topic_embeddings[negative_topic_idxes]
-
-    #             pos_distance = F.pairwise_distance(anchor, positive)
-    #             neg_distances = F.pairwise_distance(anchor.repeat(num_negatives, 1), negatives)
-
-    #             loss = torch.clamp(pos_distance - neg_distances + margin, min=0.0)
-    #             loss_cl += loss.mean()
-
-    #     loss_cl *= self.weight_loss_cl
-    #     return loss_cl
-
-
-    """ InfoNCE Loss: similarity_matrix là ma trận cosine similarity giữa các cụm (xđịnh = tâm cụm). Nó:
-        - similarity_matrix[i, i] (similarity của một cụm lớn với chính nó) cao.
-        - similarity_matrix[i, j] (similarity của một cụm lớn với các cụm lớn khác) thấp, với i != j
-        - positive pair: cặp embedding của 1 cụm với chính nó -> ptu nằm trên đg chéo
-        - negative pair: cặp embedding của 1 cụm với các cụm khác
-        => Mong similarity_matrix gần giống với ma trận đơn vị
-    """
-
-    # def get_contrastive_loss_large_clusters(self):
-    #     loss_cl_large = 0.0
-
-         
-    #     group_embeddings = []
-    #     for group_topics in self.group_topic:
-    #         group_embeddings.append(torch.mean(self.topic_embeddings[group_topics], dim=0))
-        
-    #     group_embeddings = torch.stack(group_embeddings) 
-
-    #     norm_embeddings = F.normalize(group_embeddings, p=2, dim=1)
-    #     similarity_matrix = torch.mm(norm_embeddings, norm_embeddings.T)
-
-    #     labels = torch.arange(len(self.group_topic)).to(similarity_matrix.device)
-
-    #     # Calculate InfoNCE loss
-    #     loss_cl_large = F.cross_entropy(similarity_matrix, labels)
-
-    #     loss_cl_large *= self.weight_loss_cl_large
-    #     return loss_cl_large
 
 
     def get_contrastive_loss_large_clusters(self, margin=0.2, num_negatives=10):
@@ -377,10 +277,6 @@ class IDEAS(nn.Module):
         return loss_ECR
     
 
-    # def pairwise_euclidean_distance(self, x, y):
-    #     cost = torch.sum(x ** 2, axis=1, keepdim=True) + \
-    #         torch.sum(y ** 2, dim=1) - 2 * torch.matmul(x, y.t())
-    #     return cost
     def pairwise_euclidean_distance(self, x, y):
         cost = torch.sum(x ** 2, axis=1, keepdim=True) + \
             torch.sum(y ** 2, dim=1) - 2 * torch.matmul(x, y.t())
@@ -418,9 +314,6 @@ class IDEAS(nn.Module):
 
     def forward(self, indices, input, epoch_id=None):
 
-        if self.sub_cluster is None or (epoch_id is not None and epoch_id % 500 == 0):
-            self.create_group_topic()
-
         bow = input[0]
         contextual_emb = input[1]
 
@@ -436,23 +329,22 @@ class IDEAS(nn.Module):
         loss_TM = recon_loss + loss_KL
 
         loss_ECR = self.get_loss_ECR()
-        loss_TP = self.get_loss_TP(indices)
+        loss_TP = self.get_loss_TP(ndices)
         loss_DT_ETP = self.get_loss_DT_ETP()
 
         loss_cl_large = 0.0
-        loss_cl = 0.0
         loss_cl_words = 0.0
+
+        if epoch_id >= self.threshold_epochs and epoch_id % 100 == 0:
+            self.create_group_topic()
 
         if epoch_id >= self.threshold_epochs and self.weight_loss_cl_large != 0:
             loss_cl_large = self.get_contrastive_loss_large_clusters()
         
-        if epoch_id >= self.threshold_epochs and self.weight_loss_cl != 0:
-            loss_cl = self.get_contrastive_loss()
-        
         if epoch_id >= self.threshold_epochs and self.weight_loss_cl_words != 0:
             loss_cl_words = self.get_contrastive_loss_words()
             
-        loss = loss_TM + loss_ECR + loss_TP + loss_DT_ETP + loss_cl + loss_cl_large + loss_cl_words
+        loss = loss_TM + loss_ECR + loss_TP + loss_DT_ETP + loss_cl_large + loss_cl_words
         rst_dict = {
             'loss': loss,
             'loss_TM': loss_TM,
@@ -470,7 +362,72 @@ class IDEAS(nn.Module):
 
 
 
+    """ InfoNCE Loss: similarity_matrix là ma trận cosine similarity giữa các cụm (xđịnh = tâm cụm). Nó:
+        - similarity_matrix[i, i] (similarity của một cụm lớn với chính nó) cao.
+        - similarity_matrix[i, j] (similarity của một cụm lớn với các cụm lớn khác) thấp, với i != j
+        - positive pair: cặp embedding của 1 cụm với chính nó -> ptu nằm trên đg chéo
+        - negative pair: cặp embedding của 1 cụm với các cụm khác
+        => Mong similarity_matrix gần giống với ma trận đơn vị
+    """
 
+    
+    # def get_contrastive_loss(self, margin=0.2, num_negatives=3):
+    #     loss_cl = 0.0
+
+    #     # Duyệt qua từng cụm lớn
+    #     for group_idx, sub_clusters in self.sub_cluster.items():
+    #         if len(sub_clusters) <= 1:
+    #             continue
+
+    #         # Duyệt qua từng cụm con
+    #         for sub_group_id, sub_topic_idxes in sub_clusters.items():
+    #             if len(sub_topic_idxes) < 2:
+    #                 continue
+
+    #             anchor = torch.mean(self.topic_embeddings[sub_topic_idxes], dim=0, keepdim=True)
+
+    #             positive_topic_idx = np.random.choice(sub_topic_idxes)
+    #             positive = self.topic_embeddings[positive_topic_idx].unsqueeze(0)
+
+    #             negative_candidates = []
+    #             for neg_sub_group_id, neg_sub_topic_idxes in sub_clusters.items():
+    #                 if neg_sub_group_id != sub_group_id:  
+    #                     negative_candidates.extend(neg_sub_topic_idxes)
+
+    #             if len(negative_candidates) < num_negatives:
+    #                 continue
+
+    #             negative_topic_idxes = np.random.choice(negative_candidates, size=num_negatives, replace=False)
+    #             negatives = self.topic_embeddings[negative_topic_idxes]
+
+    #             pos_distance = F.pairwise_distance(anchor, positive)
+    #             neg_distances = F.pairwise_distance(anchor.repeat(num_negatives, 1), negatives)
+
+    #             loss = torch.clamp(pos_distance - neg_distances + margin, min=0.0)
+    #             loss_cl += loss.mean()
+
+    #     loss_cl *= self.weight_loss_cl
+    #     return loss_cl
+
+    
+    # Tạo sub-clusters trong mỗi nhóm lớn
+    # self.sub_cluster = {}
+    # for group_idx, topics in enumerate(self.group_topic):  
+    #     if len(topics) < 2:
+    #         self.sub_cluster[group_idx] = {0: topics} 
+    #         continue
+        
+    #     sub_embeddings = self.topic_embeddings[topics]
+    #     sub_distances = torch.cdist(sub_embeddings, sub_embeddings, p=2).detach().cpu().numpy() 
+    #     np.fill_diagonal(sub_distances, 0)
+
+    #     sub_Z = linkage(sub_distances, method='average')
+    #     sub_group_id = fcluster(sub_Z, t= self.num_sub_clusters, criterion='maxclust') - 1
+
+    #     self.sub_cluster[group_idx] = {}
+    #     for sub_idx, topic_idx in enumerate(topics):
+    #         sub_cluster_id = sub_group_id[sub_idx]
+    #         self.sub_cluster[group_idx].setdefault(sub_cluster_id, []).append(topic_idx)
 
     # def get_contrastive_loss(self):
     #     loss_cl = 0.0

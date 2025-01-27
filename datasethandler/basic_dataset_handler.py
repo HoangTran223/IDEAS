@@ -153,13 +153,13 @@ class BasicDatasetHandler:
             else:
                 """train_dataset = DatasetHandler(self.train_data)
                 test_dataset = DatasetHandler(self.test_data)"""
-                train_dataset = TensorDataset(self.train_data, self.train_indices)
-                test_dataset = TensorDataset(self.test_data, self.test_indices)
+                # train_dataset = TensorDataset(self.train_data, self.train_indices)
+                # test_dataset = TensorDataset(self.test_data, self.test_indices)
 
-                # train_dataset = TensorDataset(self.train_data, self.train_indices, 
-                #                             torch.tensor(self.doc_embeddings, dtype=torch.float))
-                # test_dataset = TensorDataset(self.test_data, self.test_indices, 
-                #                             torch.tensor(self.doc_embeddings, dtype=torch.float))
+                train_dataset = TensorDataset(self.train_data, self.train_indices, 
+                                            torch.tensor(self.doc_embeddings, dtype=torch.float))
+                test_dataset = TensorDataset(self.test_data, self.test_indices, 
+                                            torch.tensor(self.doc_embeddings, dtype=torch.float))
 
                 self.train_dataloader = DataLoader(
                     train_dataset, batch_size=batch_size, shuffle=True)
