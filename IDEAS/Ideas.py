@@ -86,7 +86,7 @@ class IDEAS(nn.Module):
         self.matrixP = None
         self.DT_ETP = DT_ETP(weight_loss_DT_ETP, DT_alpha)
 
-        self.doc_embeddings = doc_embeddings.to(args.device)
+        self.doc_embeddings = doc_embeddings.to(self.topic_embeddings.device)
         self.group_topic = None
         self.sub_cluster = None
 
