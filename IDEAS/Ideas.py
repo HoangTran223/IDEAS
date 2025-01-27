@@ -370,7 +370,6 @@ class IDEAS(nn.Module):
             'loss_ECR': loss_ECR,
             'loss_DT_ETP': loss_DT_ETP,
             'loss_TP': loss_TP,
-            'loss_cl': loss_cl,
             'loss_cl_large': loss_cl_large,
             'loss_cl_words': loss_cl_words,
         }
