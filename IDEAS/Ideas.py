@@ -97,15 +97,16 @@ class IDEAS(nn.Module):
         self.embed_size = embed_size
         self.doc2vec_size = doc2vec_size
 
-        print(f"chieuX cua doc_embeddings {len(self.doc_embeddings)}")
-        print(f"chieuY cua doc_embeddings : {len(self.doc_embeddings[0])}")
         self.TP = TP(weight_loss_TP, alpha_TP)
 
         self.document_emb_prj = nn.Sequential(
-            nn.Linear(self.doc2vec_size, self.embed_size), 
+            nn.Linear(384, 200), 
             nn.ReLU(),
             nn.Dropout(dropout)
         )
+
+        print(f"chieuX cua doc_embeddings {len(self.doc_embeddings)}")
+        print(f"chieuY cua doc_embeddings : {len(self.doc_embeddings[1])}")
 
         self.topics = []
         self.topic_index_mapping = {}
@@ -383,7 +384,7 @@ class IDEAS(nn.Module):
     #     return cost
     def pairwise_euclidean_distance(self, x, y):
         cost = torch.sum(x ** 2, axis=1, keepdim=True) + \
-            torch.sum(y ** 2, dim=1) - 2 * torch.matmul(x, y)
+            torch.sum(y ** 2, dim=1) - 2 * torch.matmul(x, y.t)
         return cost
 
 
