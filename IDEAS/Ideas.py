@@ -100,7 +100,7 @@ class IDEAS(nn.Module):
         self.TP = TP(weight_loss_TP, alpha_TP)
 
         print(f"chieuX cua doc_embeddings {len(self.doc_embeddings)}")
-        print(f"chieuY cua doc_embeddings : {len(self.doc_embeddings[1])}")
+        print(f"chieuY cua doc_embeddings : {len(self.doc_embeddings[0])}")
 
         # self.document_emb_prj = nn.Sequential(
         #     nn.Linear(384, 200), 
@@ -108,8 +108,6 @@ class IDEAS(nn.Module):
         #     nn.Dropout(dropout)
         # )
 
-        print(f"chieuX cua doc_embeddings {len(self.doc_embeddings)}")
-        print(f"chieuY cua doc_embeddings : {len(self.doc_embeddings[1])}")
         
         self.topics = []
         self.topic_index_mapping = {}

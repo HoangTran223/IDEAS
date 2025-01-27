@@ -98,7 +98,7 @@ class BasicDatasetHandler:
             print("===> Loading doc_embeddings from file...")
             self.doc_embeddings = np.load(doc2vec_filepath)['arr_0']
         else:
-            self.doc_embeddings = self.initialize_doc_embeddings_with_doc2vec(self.train_texts, self.doc2vec_size)
+            self.doc_embeddings = self.initialize_doc_embeddings_with_doc2vec(self.train_texts)
             print("===> Saving doc_embeddings to file...")
             np.savez_compressed(doc2vec_filepath, arr_0=self.doc_embeddings)
 
@@ -193,8 +193,8 @@ class BasicDatasetHandler:
         self.vocab = file_utils.read_text(f'{path}/vocab.txt')
 
 
-    def initialize_doc_embeddings_with_doc2vec(self, documents, embed_size):
+    def initialize_doc_embeddings_with_doc2vec(self, documents):
         data = [TaggedDocument(words = doc, tags = [str(i)]) for i, doc in enumerate(documents)]
-        model = Doc2Vec(data, vector_size=embed_size, window=5, min_count=5, workers=4, epochs=40)
+        model = Doc2Vec(data, vector_size=self.doc2vec_size, window=5, min_count=5, workers=4, epochs=40)
         doc_embeddings = np.array([model.dv[str(i)] for i in range(len(documents))])
         return doc_embeddings
