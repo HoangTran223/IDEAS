@@ -145,14 +145,10 @@ if __name__ == "__main__":
                         threshold_epochs=args.threshold_epochs,
                         doc_embeddings=torch.tensor(dataset.train_doc_embeddings).float().to(args.device),
                         ) 
-                        
-        model.doc_embeddings = model.doc_embeddings.to(args.device)
+
+        # model.doc_embeddings = model.doc_embeddings.to(args.device)
         model = model.to(args.device)
 
-    model.weight_loss_DT_ETP = args.weight_loss_DT_ETP
-    model.weight_loss_TP = args.weight_loss_TP
-    model.weight_loss_ECR = args.weight_ECR
-    model = model.to(args.device)
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"Number of trainable parameters: {trainable_params}")
 

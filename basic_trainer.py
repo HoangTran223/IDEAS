@@ -77,7 +77,7 @@ class BasicTrainer:
                 *inputs, indices, doc_embeddings = batch
                 batch_data = inputs
                 # batch_data = inputs + [doc_embeddings]
-                rst_dict = self.model(indices, batch_data, epoch_id=epoch, doc_embeddings=doc_embeddings)
+                rst_dict = self.model(indices, batch_data, epoch_id=epoch)
                 batch_loss = rst_dict['loss']
 
                 batch_loss.backward()
