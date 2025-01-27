@@ -184,19 +184,3 @@ class BasicDatasetHandler:
             self.test_labels = np.loadtxt(f'{path}/test_labels.txt', dtype=int)
 
         self.vocab = file_utils.read_text(f'{path}/vocab.txt')
-
-
-    def initialize_doc_embeddings_with_doc2vec(self, documents):
-        data = [TaggedDocument(words = doc, tags = [str(i)]) for i, doc in enumerate(documents)]
-        model = Doc2Vec(data, vector_size=self.doc2vec_size, window=5, min_count=5, workers=4, epochs=100)
-        doc_embeddings = np.array([model.dv[str(i)] for i in range(len(documents))])
-        return doc_embeddings
-
-
-
-
-
-
-    
-
-    self.doc2vec_size = doc2vec_size
