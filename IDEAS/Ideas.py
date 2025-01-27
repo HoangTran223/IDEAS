@@ -95,6 +95,7 @@ class IDEAS(nn.Module):
         self.doc_embeddings = nn.Parameter(F.normalize(self.doc_embeddings))
         self.group_topic = None
         self.sub_cluster = None
+        self.embed_size = embed_size
 
         print(f"chieuX cua doc_embeddings {len(self.doc_embeddings)}")
         print(f"chieuY cua doc_embeddings : {len(self.doc_embeddings[0])}")
