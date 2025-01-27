@@ -308,6 +308,7 @@ class IDEAS(nn.Module):
         return self.matrixP
 
     def get_loss_TP(self, doc_embeddings, indices):
+        indices = indices.to(self.doc_embeddings.device)
         minibatch_embeddings = self.doc_embeddings[indices]
         # minibatch_indices = minibatch_indices.to(self.topic_embeddings.device)
         # minibatch_embeddings = doc_embeddings[minibatch_indices]
