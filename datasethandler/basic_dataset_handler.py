@@ -90,20 +90,22 @@ class BasicDatasetHandler:
         
         ##
         doc2vec_dir = os.path.join(dataset_dir, 'doc2vec')
-        doc2vec_filepath = os.path.join(doc2vec_dir, f'doc_embeddings_384_.npz')
+        os.makedirs(doc2vec_dir, exist_ok=True)
 
-        if os.path.isfile(doc2vec_filepath):
-            print("===> Loading doc_embeddings from file...")
-            self.doc_embeddings = np.load(doc2vec_filepath)['arr_0']
+        doc2vec_train_filepath = os.path.join(doc2vec_dir, f'doc_embeddings_384_.npz')
+        if os.path.isfile(doc2vec_train_filepath):
+            print("===> Loading train doc_embeddings...")
+            self.train_doc_embeddings = np.load(doc2vec_train_filepath)['arr_0']
+        else:
+            raise FileNotFoundError(f"File {doc2vec_train_filepath} not found.")
         
-        doc2vec_test_filepath = os.path.join(doc2vec_dir, f'doc_embeddings_test_{self.doc2vec_size}_.npz') # Sửa tên file
+
+        doc2vec_test_filepath = os.path.join(doc2vec_dir, f'doc_embeddings_test_384_.npz')
         if os.path.isfile(doc2vec_test_filepath):
-            print("===> Loading test doc_embeddings from file...")
+            print("===> Loading test doc_embeddings...")
             self.test_doc_embeddings = np.load(doc2vec_test_filepath)['arr_0']
         else:
-            self.test_doc_embeddings = self.initialize_doc_embeddings_with_doc2vec(self.test_texts, self.doc2vec_size)
-            print("===> Saving test doc_embeddings to file...")
-            np.savez_compressed(doc2vec_test_filepath, arr_0=self.test_doc_embeddings)
+            raise FileNotFoundError(f"File {doc2vec_test_filepath} not found.")
 
         if contextual_embed:
             if os.path.isfile(os.path.join(dataset_dir, 'with_bert', 'train_bert.npz')):
@@ -166,9 +168,9 @@ class BasicDatasetHandler:
                 # test_dataset = TensorDataset(self.test_data, self.test_indices)
 
                 train_dataset = TensorDataset(self.train_data, self.train_indices, 
-                                            torch.tensor(self.doc_embeddings, dtype=torch.float))
+                                            torch.tensor(self.train_doc_embeddings, dtype=torch.float))
                 test_dataset = TensorDataset(self.test_data, self.test_indices, 
-                                            torch.tensor(self.doc_embeddings, dtype=torch.float))
+                                            torch.tensor(self.test_doc_embeddings, dtype=torch.float))
 
                 self.train_dataloader = DataLoader(
                     train_dataset, batch_size=batch_size, shuffle=True)
