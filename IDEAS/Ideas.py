@@ -101,7 +101,7 @@ class IDEAS(nn.Module):
         self.TP = TP(weight_loss_TP, alpha_TP)
 
         self.document_emb_prj = nn.Sequential(
-            nn.Linear(384, self.embed_size),
+            nn.Linear(self.embed_size, 384),
             nn.ReLU(),
             nn.Dropout(dropout)
         )
