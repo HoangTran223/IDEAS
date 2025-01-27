@@ -21,7 +21,7 @@ from utils import static_utils
 
 class IDEAS(nn.Module):
     def __init__(self, vocab_size, data_name = '20NG', num_topics=50, num_groups=50, en_units=200, dropout=0.,
-                 cluster_distribution=None, cluster_mean=None, cluster_label=None, threshold_epochs = 10,
+                 cluster_distribution=None, cluster_mean=None, cluster_label=None, threshold_epochs = 10, doc2vec_size=384,
                  pretrained_WE=None, embed_size=200, beta_temp=0.2, num_documents=None, weight_loss_cl_words=1.0,
                  weight_loss_ECR=250.0, weight_loss_TP = 250.0, alpha_TP = 20.0, threshold_cl_large = 0.5,
                  DT_alpha: float=3.0, weight_loss_DT_ETP = 10.0, threshold_cl = 0.5, vocab = None, doc_embeddings=None,
@@ -95,13 +95,14 @@ class IDEAS(nn.Module):
         self.group_topic = None
         self.sub_cluster = None
         self.embed_size = embed_size
+        self.doc2vec_size = doc2vec_size
 
         print(f"chieuX cua doc_embeddings {len(self.doc_embeddings)}")
         print(f"chieuY cua doc_embeddings : {len(self.doc_embeddings[0])}")
         self.TP = TP(weight_loss_TP, alpha_TP)
 
         self.document_emb_prj = nn.Sequential(
-            nn.Linear(384, self.num_topics),
+            nn.Linear(self.doc2vec_size, self.num_topics), 
             nn.ReLU(),
             nn.Dropout(dropout)
         )
@@ -376,10 +377,20 @@ class IDEAS(nn.Module):
         return loss_ECR
     
 
+    # def pairwise_euclidean_distance(self, x, y):
+    #     cost = torch.sum(x ** 2, axis=1, keepdim=True) + \
+    #         torch.sum(y ** 2, dim=1) - 2 * torch.matmul(x, y.t())
+    #     return cost
     def pairwise_euclidean_distance(self, x, y):
-        cost = torch.sum(x ** 2, axis=1, keepdim=True) + \
-            torch.sum(y ** 2, dim=1) - 2 * torch.matmul(x, y.t())
-        return cost
+        x_norm = torch.sum(x ** 2, dim=1, keepdim=True)  # (num_documents, 1)
+        y_norm = torch.sum(y ** 2, dim=1, keepdim=True)  # (num_topics, 1)
+        y_t = torch.transpose(y, 0, 1)  # (embed_size, num_topics)
+        xy = torch.matmul(x, y_t)  # (num_documents, num_topics)
+
+        # (num_documents, num_topics)
+        distances = x_norm + torch.transpose(y_norm, 0, 1) - 2 * xy
+
+        return distances
 
 
     def create_matrixP(self, minibatch_indices):
