@@ -295,7 +295,7 @@ class BasicDatasetHandler:
         ##
         doc2vec_dir = os.path.join(dataset_dir, 'doc2vec')
         os.makedirs(doc2vec_dir, exist_ok=True)
-        doc2vec_filepath = os.path.join(doc2vec_dir, f'doc_embeddings_{self.doc2vec_size}.npz')
+        doc2vec_filepath = os.path.join(doc2vec_dir, f'doc_embeddings_{self.doc2vec_size}_.npz')
 
         if os.path.isfile(doc2vec_filepath):
             print("===> Loading doc_embeddings from file...")
