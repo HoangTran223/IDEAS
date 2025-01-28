@@ -33,12 +33,8 @@ def add_model_argument(parser):
     parser.add_argument('--alpha_TP', type=float, default=20.)
     parser.add_argument('--weight_loss_TP', type=float, default=250.)
     parser.add_argument('--weight_loss_DT_ETP', type=float, default=250.)
-    parser.add_argument('--threshold_cl', type=float, default=0.5)
-    parser.add_argument('--threshold_cl_large', type=float, default=0.5)
-    parser.add_argument('--weight_loss_cl', type=float, default=2.)
     parser.add_argument('--weight_loss_cl_large', type=float, default=1.)
     parser.add_argument('--num_large_clusters', type=int, default=5)
-    parser.add_argument('--num_sub_clusters', type=int, default=5)
     parser.add_argument('--threshold_epochs', type=int, default=10)  
     parser.add_argument('--weight_loss_cl_words', type=float, default=1.0)
     

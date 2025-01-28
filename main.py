@@ -131,22 +131,15 @@ if __name__ == "__main__":
                         weight_loss_DT_ETP= args.weight_loss_DT_ETP,
                         alpha_TP=args.alpha_TP,
                         alpha_ECR=args.alpha_ECR,
-                        alpha_GR=args.alpha_GR,
                         beta_temp=args.beta_temp,
-                        threshold_cl=args.threshold_cl,
-                        threshold_cl_large=args.threshold_cl_large,
                         vocab=dataset.vocab,
-                        weight_loss_cl = args.weight_loss_cl,
                         weight_loss_cl_large=args.weight_loss_cl_large,
-                        num_documents=num_documents,
-                        num_sub_clusters=args.num_sub_clusters,
                         num_large_clusters=args.num_large_clusters,
                         weight_loss_cl_words = args.weight_loss_cl_words,
                         threshold_epochs=args.threshold_epochs,
                         doc_embeddings=torch.tensor(dataset.train_doc_embeddings).float().to(args.device),
                         ) 
 
-        # model.doc_embeddings = model.doc_embeddings.to(args.device)
         model = model.to(args.device)
 
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)

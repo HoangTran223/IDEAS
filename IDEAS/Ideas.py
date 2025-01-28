@@ -21,17 +21,15 @@ from utils import static_utils
 class IDEAS(nn.Module):
     def __init__(self, vocab_size, data_name = '20NG', num_topics=50, num_groups=50, en_units=200, dropout=0.,
                  cluster_distribution=None, cluster_mean=None, cluster_label=None, threshold_epochs = 10, doc2vec_size=384,
-                 pretrained_WE=None, embed_size=200, beta_temp=0.2, num_documents=None, weight_loss_cl_words=1.0,
+                 pretrained_WE=None, embed_size=200, beta_temp=0.2, weight_loss_cl_words=1.0,
                  weight_loss_ECR=250.0, weight_loss_TP = 250.0, alpha_TP = 20.0, threshold_cl_large = 0.5,
                  DT_alpha: float=3.0, weight_loss_DT_ETP = 10.0, threshold_cl = 0.5, vocab = None, doc_embeddings=None,
-                 weight_loss_cl = 1.0, weight_loss_cl_large = 1.0, num_large_clusters = 5, num_sub_clusters = 3,
+                 weight_loss_cl_large = 1.0, num_large_clusters = 5,
                  alpha_GR=20.0, alpha_ECR=20.0, sinkhorn_alpha = 20.0, sinkhorn_max_iter=5000):
         super().__init__()
 
         self.threshold_epochs = threshold_epochs
-        self.num_sub_clusters = num_sub_clusters
         self.num_large_clusters = num_large_clusters
-        self.num_documents = num_documents
         self.num_topics = num_topics
         self.num_groups = num_groups
         self.beta_temp = beta_temp
@@ -75,20 +73,15 @@ class IDEAS(nn.Module):
 
         ##
         self.weight_loss_cl_words= weight_loss_cl_words
-        self.weight_loss_cl = weight_loss_cl
         self.weight_loss_cl_large = weight_loss_cl_large
 
-        self.threshold_cl = threshold_cl
-        self.threshold_cl_large = threshold_cl_large
 
-        self.top_words_dict = {}
         self.vocab = vocab
         self.matrixP = None
         self.DT_ETP = DT_ETP(weight_loss_DT_ETP, DT_alpha)
 
         self.doc_embeddings = doc_embeddings.to(self.topic_embeddings.device)
         self.group_topic = None
-        self.sub_cluster = None
 
         self.TP = TP(weight_loss_TP, alpha_TP)
 
@@ -388,6 +381,11 @@ class IDEAS(nn.Module):
         => Mong similarity_matrix gần giống với ma trận đơn vị
     """
 
+
+
+
+    # self.threshold_cl = threshold_cl
+    # self.threshold_cl_large = threshold_cl_large
     
     # def get_contrastive_loss(self, margin=0.2, num_negatives=3):
     #     loss_cl = 0.0
@@ -529,7 +527,7 @@ class IDEAS(nn.Module):
     #     return similarity_matrix
 
 
-    
+    # self.top_words_dict = {}
     # Tính loss: Nếu sim > threshold, coi là positive pair, ngược lại là negative pair
     # for i in range(similarity_matrix.shape[0]):
     #     for j in range(i + 1, similarity_matrix.shape[1]):
