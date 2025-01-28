@@ -334,7 +334,7 @@ class IDEAS(nn.Module):
 
         bow = input[0]
         # contextual_emb = input[1]
-        doc_embeddings = doc_embeddings.to(self.fc11.weight.device)
+        doc_embeddings = doc_embeddings.to(self.topic_embeddings.device)
 
         rep, mu, logvar = self.get_representation(bow)
         loss_KL = self.compute_loss_KL(mu, logvar)

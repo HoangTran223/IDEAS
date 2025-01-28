@@ -71,7 +71,7 @@ class RawDatasetHandler:
 
 
 class BasicDatasetHandler:
-    def __init__(self, dataset_dir, batch_size=200, read_labels=False, device='cpu', 
+    def __init__(self, dataset_dir, batch_size=200, read_labels=False, device='gpu', 
                     as_tensor=False, contextual_embed=False, doc2vec_size=384):
         # train_bow: NxV
         # test_bow: Nxv
