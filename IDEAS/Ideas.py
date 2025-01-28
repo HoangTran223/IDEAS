@@ -21,7 +21,7 @@ from utils import static_utils
 class IDEAS(nn.Module):
     def __init__(self, vocab_size, data_name = '20NG', num_topics=50, num_groups=50, en_units=200, dropout=0.,
                  cluster_distribution=None, cluster_mean=None, cluster_label=None, threshold_epochs = 10, doc2vec_size=384,
-                 pretrained_WE=None, embed_size=200, beta_temp=0.2, weight_loss_cl_words=1.0,
+                 pretrained_WE=None, embed_size=200, beta_temp=0.2, weight_loss_cl_words=1.0, threshold_cluster=10,
                  weight_loss_ECR=250.0, weight_loss_TP = 250.0, alpha_TP = 20.0, threshold_cl_large = 0.5,
                  DT_alpha: float=3.0, weight_loss_DT_ETP = 10.0, threshold_cl = 0.5, vocab = None, doc_embeddings=None,
                  weight_loss_cl_large = 1.0, num_large_clusters = 5,
@@ -29,6 +29,7 @@ class IDEAS(nn.Module):
         super().__init__()
 
         self.threshold_epochs = threshold_epochs
+        self.threshold_cluster = threshold_cluster
         self.num_large_clusters = num_large_clusters
         self.num_topics = num_topics
         self.num_groups = num_groups
@@ -347,7 +348,7 @@ class IDEAS(nn.Module):
         loss_cl_large = 0.0
         loss_cl_words = 0.0
 
-        if epoch_id >= self.threshold_epochs and epoch_id % self.threshold_epochs == 0:
+        if epoch_id >= self.threshold_epochs and (epoch_id == self.threshold_epochs or epoch_id % self.threshold_cluster == 0):
             self.create_group_topic()
 
         if epoch_id >= self.threshold_epochs and self.weight_loss_cl_large != 0:

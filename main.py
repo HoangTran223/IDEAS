@@ -137,6 +137,7 @@ if __name__ == "__main__":
                         num_large_clusters=args.num_large_clusters,
                         weight_loss_cl_words = args.weight_loss_cl_words,
                         threshold_epochs=args.threshold_epochs,
+                        threshold_cluster=args.threshold_cluster,
                         doc_embeddings=torch.tensor(dataset.train_doc_embeddings).float().to(args.device),
                         ) 
 

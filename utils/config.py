@@ -36,10 +36,10 @@ def add_model_argument(parser):
     parser.add_argument('--weight_loss_cl_large', type=float, default=1.)
     parser.add_argument('--num_large_clusters', type=int, default=5)
     parser.add_argument('--threshold_epochs', type=int, default=10)  
+    parser.add_argument('--threshold_cluster', type=int, default=10)  
     parser.add_argument('--weight_loss_cl_words', type=float, default=1.0)
     
     #
-
     
 
     parser.add_argument('--beta_temp', type=float, default=0.2)
