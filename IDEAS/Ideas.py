@@ -125,20 +125,29 @@ class IDEAS(nn.Module):
     def get_word_topic_assignments(self):
         word_topic_assignments = [[] for _ in range(self.num_topics)]
 
-        for word_idx, word in enumerate(self.vocab):
-            topic_idx = self.word_to_topic_by_similarity(word)
+        # for word_idx, word in enumerate(self.vocab):
+        #     topic_idx = self.word_to_topic_by_similarity(word)
+        #     word_topic_assignments[topic_idx].append(word_idx)
+        # return word_topic_assignments
+
+        # Vector hóa tính toán similarity cho tất cả các từ
+        word_embeddings = self.word_embeddings
+        similarity_scores = F.cosine_similarity(word_embeddings,  self.topic_embeddings) 
+        topic_indices = torch.argmax(similarity_scores, dim=1).cpu().numpy() 
+
+        for word_idx, topic_idx in enumerate(topic_indices):
             word_topic_assignments[topic_idx].append(word_idx)
         return word_topic_assignments
     
 
-    def word_to_topic_by_similarity(self, word):
-        word_idx = self.vocab.index(word)
-        word_embedding = self.word_embeddings[word_idx].unsqueeze(0)
+    # def word_to_topic_by_similarity(self, word):
+    #     word_idx = self.vocab.index(word)
+    #     word_embedding = self.word_embeddings[word_idx].unsqueeze(0)
 
-        similarity_scores = F.cosine_similarity(word_embedding, self.topic_embeddings)
-        topic_idx = torch.argmax(similarity_scores).item()
+    #     similarity_scores = F.cosine_similarity(word_embedding, self.topic_embeddings)
+    #     topic_idx = torch.argmax(similarity_scores).item()
 
-        return topic_idx
+    #     return topic_idx
 
 
     def get_contrastive_loss_large_clusters(self, margin=0.2, num_negatives=10):
