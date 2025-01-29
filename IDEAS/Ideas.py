@@ -100,8 +100,12 @@ class IDEAS(nn.Module):
 
 
     def create_group_topic(self):
-        distances = torch.cdist(self.topic_embeddings, self.topic_embeddings, p=2)  
-        distances = distances.detach().cpu().numpy()
+        # distances = torch.cdist(self.topic_embeddings, self.topic_embeddings, p=2)  
+        # distances = distances.detach().cpu().numpy()
+        with torch.no_grad():  
+            distances = torch.cdist(self.topic_embeddings, self.topic_embeddings, p=2)
+            distances = distances.detach().cpu().numpy()
+            np.fill_diagonal(distances, 0)
 
         np.fill_diagonal(distances, 0)
         Z = linkage(distances, method='average', optimal_ordering=True) 
@@ -123,21 +127,31 @@ class IDEAS(nn.Module):
     
 
     def get_word_topic_assignments(self):
-        word_topic_assignments = [[] for _ in range(self.num_topics)]
+        # word_topic_assignments = [[] for _ in range(self.num_topics)]
 
         # for word_idx, word in enumerate(self.vocab):
         #     topic_idx = self.word_to_topic_by_similarity(word)
         #     word_topic_assignments[topic_idx].append(word_idx)
         # return word_topic_assignments
+        with torch.no_grad():
+            # Normalize embeddings for cosine similarity
+            word_embeddings_norm = F.normalize(self.word_embeddings, p=2, dim=1)
+            topic_embeddings_norm = F.normalize(self.topic_embeddings, p=2, dim=1)
+            
+            # Compute similarity matrix efficiently
+            similarity_matrix = torch.mm(word_embeddings_norm, topic_embeddings_norm.t())
+            topic_indices = torch.argmax(similarity_matrix, dim=1).cpu()
 
-        # Vector hóa tính toán similarity cho tất cả các từ
-        word_embeddings = self.word_embeddings
-        similarity_scores = F.cosine_similarity(word_embeddings,  self.topic_embeddings) 
-        topic_indices = torch.argmax(similarity_scores, dim=1).cpu().numpy() 
-
-        for word_idx, topic_idx in enumerate(topic_indices):
-            word_topic_assignments[topic_idx].append(word_idx)
+        # Initialize with estimated sizes
+        word_topic_assignments = [[] for _ in range(self.num_topics)]
+        
+        # Group assignments using numpy operations
+        topic_indices = topic_indices.numpy()
+        for topic_idx in range(self.num_topics):
+            word_topic_assignments[topic_idx] = np.where(topic_indices == topic_idx)[0].tolist()
+            
         return word_topic_assignments
+
     
 
     # def word_to_topic_by_similarity(self, word):
@@ -150,39 +164,78 @@ class IDEAS(nn.Module):
     #     return topic_idx
 
 
+    # def get_contrastive_loss_large_clusters(self, margin=0.2, num_negatives=10):
+    #     loss_cl_large = 0.0
+
+    #     # Duyệt qua từng cụm lớn
+    #     for group_idx, group_topics in enumerate(self.group_topic):
+    #         if len(group_topics) < 2:
+    #             continue
+
+    #         anchor = torch.mean(self.topic_embeddings[group_topics], dim=0, keepdim=True)
+
+    #         positive_topic_idx = np.random.choice(group_topics)
+    #         positive = self.topic_embeddings[positive_topic_idx].unsqueeze(0)
+
+    #         negative_candidates = []
+    #         for neg_group_idx, neg_group_topics in enumerate(self.group_topic):
+    #             if neg_group_idx != group_idx:  
+    #                 negative_candidates.extend(neg_group_topics)
+
+    #         if len(negative_candidates) < num_negatives:
+    #             continue
+
+    #         negative_topic_idxes = np.random.choice(negative_candidates, size=num_negatives, replace=False)
+    #         negatives = self.topic_embeddings[negative_topic_idxes]
+
+    #         pos_distance = F.pairwise_distance(anchor, positive)
+    #         neg_distances = F.pairwise_distance(anchor.repeat(num_negatives, 1), negatives)
+
+    #         loss = torch.clamp(pos_distance - neg_distances + margin, min=0.0)
+    #         loss_cl_large += loss.mean()
+
+    #     loss_cl_large *= self.weight_loss_cl_large
+    #     return loss_cl_large
+
     def get_contrastive_loss_large_clusters(self, margin=0.2, num_negatives=10):
         loss_cl_large = 0.0
+        
+        with torch.no_grad():  # Disable gradient tracking for efficiency
+            for group_topics in self.group_topic:
+                if len(group_topics) < 2:
+                    continue
 
-        # Duyệt qua từng cụm lớn
-        for group_idx, group_topics in enumerate(self.group_topic):
-            if len(group_topics) < 2:
-                continue
+                # Compute anchor embedding
+                group_topics_tensor = torch.tensor(group_topics, device=self.topic_embeddings.device)
+                anchor = torch.mean(self.topic_embeddings[group_topics_tensor], dim=0, keepdim=True)
 
-            anchor = torch.mean(self.topic_embeddings[group_topics], dim=0, keepdim=True)
+                # Sample positive
+                positive_idx = torch.randint(len(group_topics), (1,))
+                positive = self.topic_embeddings[group_topics_tensor[positive_idx]].unsqueeze(0)
 
-            positive_topic_idx = np.random.choice(group_topics)
-            positive = self.topic_embeddings[positive_topic_idx].unsqueeze(0)
+                # Get negative candidates efficiently
+                negative_candidates = torch.cat([
+                    self.topic_embeddings[torch.tensor(topics, device=self.topic_embeddings.device)]
+                    for i, topics in enumerate(self.group_topic) if i != group_topics_tensor[0]
+                ])
 
-            negative_candidates = []
-            for neg_group_idx, neg_group_topics in enumerate(self.group_topic):
-                if neg_group_idx != group_idx:  
-                    negative_candidates.extend(neg_group_topics)
+                if len(negative_candidates) < num_negatives:
+                    continue
 
-            if len(negative_candidates) < num_negatives:
-                continue
+                # Sample negatives
+                neg_indices = torch.randperm(len(negative_candidates))[:num_negatives]
+                negatives = negative_candidates[neg_indices]
 
-            negative_topic_idxes = np.random.choice(negative_candidates, size=num_negatives, replace=False)
-            negatives = self.topic_embeddings[negative_topic_idxes]
+                # Compute distances efficiently
+                pos_distance = F.pairwise_distance(anchor, positive)
+                neg_distances = F.pairwise_distance(anchor.repeat(num_negatives, 1), negatives)
 
-            pos_distance = F.pairwise_distance(anchor, positive)
-            neg_distances = F.pairwise_distance(anchor.repeat(num_negatives, 1), negatives)
+                # Compute loss
+                loss = torch.clamp(pos_distance - neg_distances + margin, min=0.0)
+                loss_cl_large += loss.mean()
 
-            loss = torch.clamp(pos_distance - neg_distances + margin, min=0.0)
-            loss_cl_large += loss.mean()
-
-        loss_cl_large *= self.weight_loss_cl_large
-        return loss_cl_large
-
+        return loss_cl_large * self.weight_loss_cl_large
+        
 
     def get_contrastive_loss_words(self):
         loss_cl_words = 0.0
