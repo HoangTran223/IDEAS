@@ -89,7 +89,7 @@ class BasicDatasetHandler:
             self.train_bow.sum(1).sum() / self.train_bow.shape[0]))
         
         ##
-        # doc2vec_dir = os.path.join(dataset_dir, 'doc2vec')
+        doc2vec_dir = os.path.join(dataset_dir, 'doc2vec')
         # os.makedirs(doc2vec_dir, exist_ok=True)
         if contextual_embed == False:
             doc2vec_train_filepath = os.path.join(doc2vec_dir, f'doc_embeddings_384_.npz')
