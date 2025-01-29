@@ -126,6 +126,11 @@ class IDEAS(nn.Module):
             topic_idx_counter += 1
     
 
+    """Gán các từ vào chủ đề tương ứng dựa trên độ tương đồng giữa từ và chủ đề:
+    - Tính cosine similarity giữa 1 word embedding và tất cả các topic embeddings
+    - Tìm topic có similarity lớn nhất với từ đó
+    """
+    
     def get_word_topic_assignments(self):
         word_topic_assignments = [[] for _ in range(self.num_topics)]
 
@@ -134,7 +139,6 @@ class IDEAS(nn.Module):
             word_topic_assignments[topic_idx].append(word_idx)
         return word_topic_assignments
 
-    
 
     def word_to_topic_by_similarity(self, word):
         word_idx = self.vocab.index(word)
