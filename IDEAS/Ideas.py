@@ -186,20 +186,17 @@ class IDEAS(nn.Module):
     def get_contrastive_loss_large_clusters(self, margin=0.2, num_negatives=10):
         loss_cl_large = 0.0
         
-        with torch.no_grad():  # Disable gradient tracking for efficiency
+        with torch.no_grad(): 
             for group_topics in self.group_topic:
                 if len(group_topics) < 2:
                     continue
 
-                # Compute anchor embedding
                 group_topics_tensor = torch.tensor(group_topics, device=self.topic_embeddings.device)
                 anchor = torch.mean(self.topic_embeddings[group_topics_tensor], dim=0, keepdim=True)
 
-                # Sample positive
                 positive_idx = torch.randint(len(group_topics), (1,))
                 positive = self.topic_embeddings[group_topics_tensor[positive_idx]].unsqueeze(0)
 
-                # Get negative candidates efficiently
                 negative_candidates = torch.cat([
                     self.topic_embeddings[torch.tensor(topics, device=self.topic_embeddings.device)]
                     for i, topics in enumerate(self.group_topic) if i != group_topics_tensor[0]
@@ -208,15 +205,12 @@ class IDEAS(nn.Module):
                 if len(negative_candidates) < num_negatives:
                     continue
 
-                # Sample negatives
                 neg_indices = torch.randperm(len(negative_candidates))[:num_negatives]
                 negatives = negative_candidates[neg_indices]
 
-                # Compute distances efficiently
                 pos_distance = F.pairwise_distance(anchor, positive)
                 neg_distances = F.pairwise_distance(anchor.repeat(num_negatives, 1), negatives)
 
-                # Compute loss
                 loss = torch.clamp(pos_distance - neg_distances + margin, min=0.0)
                 loss_cl_large += loss.mean()
 
@@ -324,19 +318,6 @@ class IDEAS(nn.Module):
             torch.sum(y ** 2, dim=1) - 2 * torch.matmul(x, y.t())
         return cost
 
-
-    # def create_matrixP(self, minibatch_indices):
-    #     num_minibatch = len(minibatch_indices)
-    #     minibatch_embeddings = self.doc_embeddings[minibatch_indices]
-    #     self.matrixP = torch.ones(
-    #         (num_minibatch, num_minibatch), device=self.topic_embeddings.device) / num_minibatch
-        
-    #     norm_embeddings = F.normalize(minibatch_embeddings, p=2, dim=1).clamp(min=1e-6)
-    #     self.matrixP = torch.matmul(norm_embeddings, norm_embeddings.T)
-    #     self.matrixP.fill_diagonal_(0)
-    #     self.matrixP = self.matrixP.clamp(min=1e-4)
-    #     return self.matrixP
-
     def create_matrixP(self, minibatch_embeddings, indices):
         # num_minibatch = minibatch_embeddings.size(0)
         num_minibatch = len(indices)
@@ -357,7 +338,6 @@ class IDEAS(nn.Module):
         cost = self.pairwise_euclidean_distance(minibatch_embeddings, minibatch_embeddings) \
            + 1e1 * torch.ones(minibatch_embeddings.size(0), minibatch_embeddings.size(0)).to(minibatch_embeddings.device)
 
-        # self.matrixP = self.create_matrixP(minibatch_indices)
         self.matrixP = self.create_matrixP(minibatch_embeddings, indices)
         loss_TP = self.TP(cost, self.matrixP)
         return loss_TP
@@ -635,17 +615,3 @@ class IDEAS(nn.Module):
     #         self.group_connection_regularizer = (self.group_connection_regularizer \
     #             + self.group_connection_regularizer.T) / 2.
 
-
-    # def sim(self, rep, bert):
-    #     prep = self.prj_rep(rep)
-    #     pbert = self.prj_bert(bert)
-    #     return torch.exp(F.cosine_similarity(prep, pbert))
-
-    # def csim(self, bow, bert):
-    #     pbow = self.prj_rep(bow)
-    #     pbert = self.prj_bert(bert)
-    #     csim_matrix = (pbow@pbert.T) / (pbow.norm(keepdim=True,
-    #                                               dim=-1)@pbert.norm(keepdim=True, dim=-1).T)
-    #     csim_matrix = torch.exp(csim_matrix)
-    #     csim_matrix = csim_matrix / csim_matrix.sum(dim=1, keepdim=True)
-    #     return -csim_matrix.log()

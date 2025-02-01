@@ -45,14 +45,9 @@ class TP(nn.Module):
             transp = transp.clamp(min=1e-4)
 
             group = group.clamp(min=1e-6)
-
-            # print(f"transp: {len(transp)}, {len(transp[1])} \n")  # ma trận vận chuyển
-            # print(f"group: {len(group)}, {len(group[1])} \n")
         
             loss_TP = (group * (group.log() - transp.log() - 1) \
                 + transp).sum()
-            # loss_TP = ((group + self.epsilon) * (torch.log(group + self.epsilon) \
-            #              - torch.log(transp) - 1) + transp).sum()
             loss_TP *= self.weight_loss_TP
 
             return loss_TP
