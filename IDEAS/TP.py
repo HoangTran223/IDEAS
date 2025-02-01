@@ -22,7 +22,7 @@ class TP(nn.Module):
             # a: Kx1 source distribution
             # b: Vx1 target distribution
             device = M.device
-            #group = group.to(device)
+            group = group.to(device)
 
             # Sinkhorn's algorithm
             a = (group.sum(axis=1)).unsqueeze(1).to(device)
