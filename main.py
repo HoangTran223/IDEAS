@@ -40,6 +40,7 @@ if __name__ == "__main__":
     config.add_dataset_argument(parser)
     config.add_model_argument(parser)
     config.add_training_argument(parser)
+    config.add_eval_argument(parser)
     args = parser.parse_args()
 
     current_time = miscellaneous.get_current_datetime()
