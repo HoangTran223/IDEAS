@@ -11,6 +11,7 @@ import logging
 import sentence_transformers
 from heapq import nlargest
 from sklearn.metrics import silhouette_score
+import hdbscan
 
 ##
 from scipy.cluster.hierarchy import linkage, fcluster
@@ -24,10 +25,12 @@ class IDEAS(nn.Module):
                  pretrained_WE=None, embed_size=200, beta_temp=0.2, weight_loss_cl_words=1.0, threshold_cluster=10,
                  weight_loss_ECR=250.0, weight_loss_TP = 250.0, alpha_TP = 20.0, threshold_cl_large = 0.5,
                  DT_alpha: float=3.0, weight_loss_DT_ETP = 10.0, threshold_cl = 0.5, vocab = None, doc_embeddings=None,
-                 weight_loss_cl_large = 1.0, num_large_clusters = 5,
+                 weight_loss_cl_large = 1.0, num_large_clusters = 5, method_cl = 'HAC', metric_cl = 'euclidean',
                  alpha_GR=20.0, alpha_ECR=20.0, sinkhorn_alpha = 20.0, sinkhorn_max_iter=5000):
         super().__init__()
 
+        self.method_cl = method_cl
+        self.metric_cl = metric_cl
         self.threshold_epochs = threshold_epochs
         self.threshold_cluster = threshold_cluster
         self.num_large_clusters = num_large_clusters
@@ -101,15 +104,27 @@ class IDEAS(nn.Module):
 
     def create_group_topic(self):
         with torch.no_grad():  
-            distances = torch.cdist(self.topic_embeddings, self.topic_embeddings, p=2)
-            distances = distances.detach().cpu().numpy()
+            if self.metric_cl == 'euclidean':
+                distances = torch.cdist(self.topic_embeddings, self.topic_embeddings, p=2)
+                distances = distances.detach().cpu().numpy()
+            elif self.metric_cl == 'cosine':
+                similarity = F.cosine_similarity(self.topic_embeddings.unsqueeze(1), self.topic_embeddings.unsqueeze(0), dim=2)
+                distances = 1 - similarity.detach().cpu().numpy()
+            else:
+                raise ValueError("distance_metric must be either 'euclidean' or 'cosine'")
+
             np.fill_diagonal(distances, 0)
 
-        np.fill_diagonal(distances, 0)
-        Z = linkage(distances, method='average', optimal_ordering=True) 
-
-        # Chia cụm 
-        group_id = fcluster(Z, t= self.num_large_clusters, criterion='maxclust') - 1
+        if self.method_cl == 'HAC':
+            Z = linkage(distances, method='average', optimal_ordering=True) 
+            group_id = fcluster(Z, t= self.num_large_clusters, criterion='maxclust') - 1
+        
+        elif self.method_cl == 'HDBSCAN':
+            clusterer = hdbscan.HDBSCAN(min_cluster_size=1, metric=self.metric_cl)
+            group_id = clusterer.fit_predict(distances)
+        
+        else:
+            raise ValueError("method_cl must be either 'HAC' or 'HDBSCAN'")
         
         self.group_topic = [[] for _ in range(self.num_large_clusters)]
         for i in range(self.num_topics):

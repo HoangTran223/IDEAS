@@ -139,6 +139,8 @@ if __name__ == "__main__":
                         threshold_epochs=args.threshold_epochs,
                         threshold_cluster=args.threshold_cluster,
                         doc_embeddings=torch.tensor(dataset.train_doc_embeddings).float().to(args.device),
+                        method_cl=args.method_cl,
+                        metric_cl=args.metric_cl
                         ) 
 
         model = model.to(args.device)
