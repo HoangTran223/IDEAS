@@ -14,9 +14,11 @@ class ECRTM(nn.Module):
     '''
     def __init__(self, vocab_size, num_topics=50, en_units=200, dropout=0., pretrained_WE=None, embed_size=200, is_OT=False,
                     cluster_distribution=None, cluster_mean=None, cluster_label=None, sinkhorn_alpha = 20.0, weight_OT=100.0,
-                    beta_temp=0.2, weight_loss_ECR=250.0, alpha_ECR=20.0, sinkhorn_max_iter=1000):
+                    beta_temp=0.2, weight_loss_ECR=250.0, alpha_ECR=20.0, sinkhorn_max_iter=1000,
+                    device='cuda'):
         super().__init__()
 
+        self.device = device
         self.num_topics = num_topics
         self.beta_temp = beta_temp
         self.weight_OT = weight_OT
@@ -70,6 +72,8 @@ class ECRTM(nn.Module):
         self.topic_embeddings = nn.Parameter(F.normalize(self.topic_embeddings))
 
         self.ECR = ECR(weight_loss_ECR, alpha_ECR, sinkhorn_max_iter)
+
+        self.to(self.device)
 
     # Same
     def get_beta(self):
@@ -145,7 +149,7 @@ class ECRTM(nn.Module):
 
     def forward(self, indices, input, epoch_id=None):
         # input = input['data']
-        bow = input[0].to(device = 'cuda')
+        bow = input[0].to(self.device)
         theta, loss_KL = self.encode(bow)
         beta = self.get_beta()
 
