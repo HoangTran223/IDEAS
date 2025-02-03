@@ -198,6 +198,10 @@ if __name__ == "__main__":
             train_theta, test_theta, dataset.train_labels, dataset.test_labels, tune=args.tune_SVM)
         print(f"Accuracy: ", classification_results['acc'])
         print(f"Macro-f1", classification_results['macro-F1'])
+    
+    NPMI_train_10_list, NPMI_train_10 = evaluations.compute_topic_coherence(
+        dataset.train_texts, dataset.vocab, top_words_10, cv_type='c_npmi')
+    print(f"NPMI_train_10: {NPMI_train_10:.5f}, NPMI_train_10_list: {NPMI_train_10_list}")
 
 
     TC_15_list, TC_15 = evaluations.topic_coherence.TC_on_wikipedia(
