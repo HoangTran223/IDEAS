@@ -100,8 +100,6 @@ class IDEAS(nn.Module):
 
 
     def create_group_topic(self):
-        # distances = torch.cdist(self.topic_embeddings, self.topic_embeddings, p=2)  
-        # distances = distances.detach().cpu().numpy()
         with torch.no_grad():  
             distances = torch.cdist(self.topic_embeddings, self.topic_embeddings, p=2)
             distances = distances.detach().cpu().numpy()
