@@ -16,9 +16,10 @@ class NeuroMax(nn.Module):
                  pretrained_WE=None, embed_size=200, beta_temp=0.2, is_OT=False,
                  weight_loss_ECR=250.0, weight_loss_GR=250.0,
                  alpha_GR=20.0, alpha_ECR=20.0, sinkhorn_alpha = 20.0, sinkhorn_max_iter=1000, weight_loss_OT=100.0,
-                 weight_loss_InfoNCE=10.0):
+                 weight_loss_InfoNCE=10.0, device = 'cuda'):
         super().__init__()
 
+        self.device = device
         self.weight_loss_OT = weight_loss_OT
         self.num_topics = num_topics
         self.num_groups = num_groups
@@ -193,7 +194,7 @@ class NeuroMax(nn.Module):
         return loss_GR
     
     def get_loss_OT(self, input, indices):
-        bow = input[0]
+        bow = input[0].to(self.device)
         theta, _ = self.encode(bow)
         cd_batch = self.cluster_distribution[indices]  
         cost = self.pairwise_euclidean_distance(self.cluster_mean, self.map_t2c(self.topic_embeddings))  

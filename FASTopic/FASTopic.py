@@ -18,9 +18,11 @@ class FASTopic(nn.Module):
                  DT_alpha: float=3.0,
                  TW_alpha: float=2.0,
                  weight_loss_OT=100.0, sinkhorn_alpha = 20.0, sinkhorn_max_iter=1000,
+                 device='cuda'
                 ):
         super().__init__()
 
+        self.device = device
         self.DT_alpha = DT_alpha
         self.TW_alpha = TW_alpha
         self.theta_temp = theta_temp
@@ -98,8 +100,8 @@ class FASTopic(nn.Module):
         return loss_OT
 
     def forward(self, indices, input, epoch_id=None):
-        train_bow = input[0]
-        doc_embeddings = input[1]
+        train_bow = input[0].to(self.device)
+        doc_embeddings = input[1].to(self.device)
 
         loss_DT, transp_DT = self.DT_ETP(doc_embeddings, self.topic_embeddings)
         loss_TW, transp_TW = self.TW_ETP(self.topic_embeddings, self.word_embeddings)

@@ -15,8 +15,10 @@ class ETM(nn.Module):
     '''
     def __init__(self, vocab_size, embed_size=200, num_topics=50, num_groups=10, en_units=800, dropout=0., 
                     cluster_distribution=None, cluster_mean=None, cluster_label=None, weight_OT=1, is_OT=False,
-                    pretrained_WE=None, sinkhorn_alpha = 20.0, sinkhorn_max_iter=1000, train_WE=False, theta_train=False):
+                    pretrained_WE=None, sinkhorn_alpha = 20.0, sinkhorn_max_iter=1000, train_WE=False, theta_train=False,
+                    device='cuda'):
         super().__init__()
+        self.device = device
         self.is_OT = is_OT
         if pretrained_WE is not None:
             self.word_embeddings = nn.Parameter(torch.from_numpy(pretrained_WE).float())
@@ -103,7 +105,7 @@ class ETM(nn.Module):
         return beta
 
     def forward(self, indices, input, avg_loss=True, epoch_id = None):
-        bow = input[0]
+        bow = input[0].to(self.device)
         theta, mu, logvar = self.get_theta(bow)
         beta = self.get_beta()
         recon_input = torch.matmul(theta, beta)

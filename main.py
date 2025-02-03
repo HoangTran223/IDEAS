@@ -84,7 +84,8 @@ if __name__ == "__main__":
                         alpha_GR=args.alpha_GR,
                         weight_loss_OT=args.weight_OT,
                         weight_loss_InfoNCE=args.weight_InfoNCE,
-                        beta_temp=args.beta_temp)
+                        beta_temp=args.beta_temp,
+                        device=args.device)
     elif args.model == 'FASTopic':
         model = FASTopic(vocab_size=dataset.vocab_size,
                         embed_size=dataset.contextual_embed_size,
@@ -92,7 +93,8 @@ if __name__ == "__main__":
                         cluster_distribution=cluster_distribution,
                         cluster_mean=cluster_mean,
                         cluster_label=cluster_label,
-                        weight_loss_OT=args.weight_OT)
+                        weight_loss_OT=args.weight_OT,
+                        device=args.device)
     elif args.model == 'ECRTM':
         model = ECRTM(vocab_size=dataset.vocab_size,
                         num_topics=args.num_topics,
@@ -114,7 +116,8 @@ if __name__ == "__main__":
                         cluster_mean=cluster_mean,
                         cluster_label=cluster_label,
                         pretrained_WE=pretrainWE if args.use_pretrainWE else None,
-                        weight_OT=args.weight_OT
+                        weight_OT=args.weight_OT,
+                        device=args.device
                         )
     elif args.model == "IDEAS":
         num_documents = len(dataset.train_dataloader.dataset)
