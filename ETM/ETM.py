@@ -62,6 +62,8 @@ class ETM(nn.Module):
         
         self.map_t2c = nn.Linear(self.word_embeddings.shape[1], self.cluster_mean.shape[1], bias=False)
         self.OT = OT(weight_OT, sinkhorn_alpha, sinkhorn_max_iter)
+
+        self.to(self.device)
         # #
 
 
