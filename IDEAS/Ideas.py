@@ -120,7 +120,7 @@ class IDEAS(nn.Module):
             group_id = fcluster(Z, t= self.num_large_clusters, criterion='maxclust') - 1
         
         elif self.method_cl == 'HDBSCAN':
-            clusterer = hdbscan.HDBSCAN(min_cluster_size=1, metric=self.metric_cl)
+            clusterer = hdbscan.HDBSCAN(min_cluster_size=2, metric=self.metric_cl)
             group_id = clusterer.fit_predict(distances)
         
         else:
