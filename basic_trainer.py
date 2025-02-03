@@ -77,7 +77,10 @@ class BasicTrainer:
                 *inputs, indices, doc_embeddings = batch
                 batch_data = inputs
                 # batch_data = inputs + [doc_embeddings]
-                rst_dict = self.model(indices, batch_data, epoch_id=epoch, doc_embeddings=doc_embeddings)
+                if self.model_name == 'IDEAS':
+                    rst_dict = self.model(indices, batch_data, epoch_id=epoch, doc_embeddings=doc_embeddings)
+                else:
+                    rst_dict = self.model(indices, batch_data, epoch_id=epoch)
                 batch_loss = rst_dict['loss']
 
                 batch_loss.backward()
@@ -119,10 +122,10 @@ class BasicTrainer:
             
                 if self.model_name == 'FASTopic':
                     batch_theta = self.model.get_theta(batch_input, train_data)
-                if self.model_name == 'IDEAS':
-                    batch_theta = self.model.get_theta(batch_input)
                 else:
-                    batch_theta = self.model.get_theta(batch_input, doc_embeddings=train_data)
+                    batch_theta = self.model.get_theta(batch_input)
+                # else:
+                #     batch_theta = self.model.get_theta(batch_input, doc_embeddings=train_data)
                 theta.extend(batch_theta.cpu().tolist())
 
         theta = np.asarray(theta)
