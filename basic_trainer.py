@@ -74,7 +74,10 @@ class BasicTrainer:
 
             for batch_id, batch in enumerate(dataset_handler.train_dataloader): 
                 # *inputs, indices = batch
-                *inputs, indices, doc_embeddings = batch
+                if self.model_name == 'IDEAS':
+                    *inputs, indices, doc_embeddings = batch
+                else:
+                    *inputs, indices = batch
                 batch_data = inputs
                 # batch_data = inputs + [doc_embeddings]
                 if self.model_name == 'IDEAS':
