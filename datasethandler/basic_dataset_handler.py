@@ -72,12 +72,13 @@ class RawDatasetHandler:
 
 class BasicDatasetHandler:
     def __init__(self, dataset_dir, batch_size=200, read_labels=False, device='gpu', 
-                    as_tensor=False, contextual_embed=False, doc2vec_size=384):
+                    as_tensor=False, contextual_embed=False, doc2vec_size=384, args=None):
         # train_bow: NxV
         # test_bow: Nxv
         # word_emeddings: VxD
         # vocab: V, ordered by word id.
 
+        self.args = args
         self.doc2vec_size = doc2vec_size    
         self.load_data(dataset_dir, read_labels)
         self.vocab_size = len(self.vocab)
@@ -163,13 +164,16 @@ class BasicDatasetHandler:
             else:
                 """train_dataset = DatasetHandler(self.train_data)
                 test_dataset = DatasetHandler(self.test_data)"""
-                # train_dataset = TensorDataset(self.train_data, self.train_indices)
-                # test_dataset = TensorDataset(self.test_data, self.test_indices)
 
-                train_dataset = TensorDataset(self.train_data, self.train_indices, 
+                if args.model == "IDEAS":
+                    train_dataset = TensorDataset(self.train_data, self.train_indices, 
                                             torch.tensor(self.train_doc_embeddings, dtype=torch.float))
-                test_dataset = TensorDataset(self.test_data, self.test_indices, 
+                    test_dataset = TensorDataset(self.test_data, self.test_indices, 
                                             torch.tensor(self.test_doc_embeddings, dtype=torch.float))
+                
+                else:
+                    train_dataset = TensorDataset(self.train_data, self.train_indices)
+                    test_dataset = TensorDataset(self.test_data, self.test_indices)
 
                 self.train_dataloader = DataLoader(
                     train_dataset, batch_size=batch_size, shuffle=True)
