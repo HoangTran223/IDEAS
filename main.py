@@ -201,7 +201,8 @@ if __name__ == "__main__":
     
     NPMI_train_10_list, NPMI_train_10 = evaluations.compute_topic_coherence(
         dataset.train_texts, dataset.vocab, top_words_10, cv_type='c_npmi')
-    print(f"NPMI_train_10: {NPMI_train_10:.5f}, NPMI_train_10_list: {NPMI_train_10_list}")
+    print(f"NPMI_train_10: {NPMI_train_10:.5f}")
+    # print(f"NPMI_train_10: {NPMI_train_10:.5f}, NPMI_train_10_list: {NPMI_train_10_list}")
 
 
     TC_15_list, TC_15 = evaluations.topic_coherence.TC_on_wikipedia(
