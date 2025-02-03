@@ -146,6 +146,7 @@ class ECRTM(nn.Module):
     def forward(self, indices, input, epoch_id=None):
         # input = input['data']
         bow = input[0]
+        bow = bow.to(device = 'cuda')
         theta, loss_KL = self.encode(bow)
         beta = self.get_beta()
 
