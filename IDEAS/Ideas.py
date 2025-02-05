@@ -107,15 +107,12 @@ class IDEAS(nn.Module):
             if self.metric_cl == 'euclidean':
                 distances = torch.cdist(self.topic_embeddings, self.topic_embeddings, p=2)
                 distances = distances.detach().cpu().numpy()
-                np.fill_diagonal(distances, 0)
             elif self.metric_cl == 'cosine':
                 similarity = F.cosine_similarity(self.topic_embeddings.unsqueeze(1), self.topic_embeddings.unsqueeze(0), dim=2)
                 distances = 1 - similarity.detach().cpu().numpy()
-                np.fill_diagonal(distances, 0)
             else:
                 raise ValueError("distance_metric must be either 'euclidean' or 'cosine'")
 
-            np.fill_diagonal(distances, 0)
 
         if self.method_cl == 'HAC':
             Z = linkage(distances, method='average', optimal_ordering=True) 

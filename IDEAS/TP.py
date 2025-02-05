@@ -46,8 +46,10 @@ class TP(nn.Module):
 
             group = group.clamp(min=1e-6)
         
-            loss_TP = (group * (group.log() - transp.log() - 1) \
-                + transp).sum()
+            # loss_TP = (group * (group.log() - transp.log() - 1) \
+            #     + transp).sum()
+            loss_TP = (transp * (transp.log() - group.log() - 1) + group).sum()
+
             loss_TP *= self.weight_loss_TP
 
             return loss_TP
