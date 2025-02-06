@@ -386,7 +386,7 @@ class IDEAS(nn.Module):
         loss_cl_large = 0.0
         loss_cl_words = 0.0
 
-        if epoch_id >= self.threshold_epochs and (epoch_id == self.threshold_epochs or epoch_id % self.threshold_cluster == 0):
+        if epoch_id >= self.threshold_epochs and (epoch_id == self.threshold_epochs or (epoch_id > self.threshold_epochs and epoch_id % self.threshold_cluster == 0)):
             self.create_group_topic()
 
         if epoch_id >= self.threshold_epochs and self.weight_loss_cl_large != 0:
