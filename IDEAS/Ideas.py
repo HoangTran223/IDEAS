@@ -167,7 +167,7 @@ class IDEAS(nn.Module):
 
         # Duyệt qua từng cụm lớn
         for group_idx, group_topics in enumerate(self.group_topic):
-            if len(group_topics) < 2:
+            if len(group_topics) < 1:
                 continue
 
             anchor = torch.mean(self.topic_embeddings[group_topics], dim=0, keepdim=True)
