@@ -108,11 +108,6 @@ class BasicTrainer:
 
                 self.logger.info(output_log)
 
-            # if epoch_id % 70 == 0:
-                # print(f"loss_TP: {loss_rst_dict['loss_TP']}, loss_TM: {loss_rst_dict['loss_TM']}, loss_cl: {loss_rst_dict['loss_cl']}, loss_cl_words: {loss_rst_dict['loss_cl_words']} \
-                #     loss_ECR: {loss_rst_dict['loss_ECR']}, loss_DT_ETP: {loss_rst_dict['loss_DT_ETP']}, loss_cl_large: {loss_rst_dict['loss_cl_large']}'\n")
-        # print(f"self.sub_cluster: {self.model.sub_cluster}\n")
-
     def test(self, input_data, train_data=None):
         data_size = input_data.shape[0]
         theta = list()
@@ -192,14 +187,14 @@ class BasicTrainer:
             topic_dist = scipy.spatial.distance.cdist(topic_embeddings, topic_embeddings)
             np.save(os.path.join(dir_path, 'topic_dist.npy'), topic_dist)
 
-        if hasattr(self.model, 'group_embeddings'):
-            group_embeddings = self.model.group_embeddings.detach().cpu().numpy()
-            np.save(os.path.join(dir_path, 'group_embeddings.npy'),
-                    group_embeddings)
-            self.logger.info(
-                f'group_embeddings size: {group_embeddings.shape}')
+        # if hasattr(self.model, 'group_embeddings'):
+        #     group_embeddings = self.model.group_embeddings.detach().cpu().numpy()
+        #     np.save(os.path.join(dir_path, 'group_embeddings.npy'),
+        #             group_embeddings)
+        #     self.logger.info(
+        #         f'group_embeddings size: {group_embeddings.shape}')
 
-            group_dist = scipy.spatial.distance.cdist(group_embeddings, group_embeddings)
-            np.save(os.path.join(dir_path, 'group_dist.npy'), group_dist)
+        #     group_dist = scipy.spatial.distance.cdist(group_embeddings, group_embeddings)
+        #     np.save(os.path.join(dir_path, 'group_dist.npy'), group_dist)
 
         return word_embeddings, topic_embeddings
