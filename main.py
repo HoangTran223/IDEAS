@@ -168,7 +168,7 @@ if __name__ == "__main__":
     trainer.train(dataset)
 
     ## Save embeddings
-    trainer.save_embeddings(current_run_dir)
+    # trainer.save_embeddings(current_run_dir)
     ##
 
     # save beta, theta and top words
