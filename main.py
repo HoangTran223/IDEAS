@@ -167,9 +167,9 @@ if __name__ == "__main__":
     # train the model
     trainer.train(dataset)
 
-    ## Save embeddings
-    # trainer.save_embeddings(current_run_dir)
-    ##
+    # Save embeddings
+    trainer.save_embeddings(current_run_dir)
+    #
 
     # save beta, theta and top words
     beta = trainer.save_beta(current_run_dir)
@@ -213,24 +213,25 @@ if __name__ == "__main__":
     print(f"TC_15: {TC_15:.5f}")
 
     
-    NPMI_train_10_list, NPMI_train_10 = evaluations.compute_topic_coherence(
-        dataset.train_texts, dataset.vocab, top_words_10, cv_type='c_npmi')
-    print(f"NPMI_train_10: {NPMI_train_10:.5f}")
+    # NPMI_train_10_list, NPMI_train_10 = evaluations.compute_topic_coherence(
+    #     dataset.train_texts, dataset.vocab, top_words_10, cv_type='c_npmi')
+    # print(f"NPMI_train_10: {NPMI_train_10:.5f}")
 
-    NPMI_train_10_list, NPMI_train_10 = evaluations.compute_topic_coherence(
-        dataset.train_texts, dataset.vocab, top_words_10, cv_type='c_npmi')
+    # NPMI_train_10_list, NPMI_train_10 = evaluations.compute_topic_coherence(
+    #     dataset.train_texts, dataset.vocab, top_words_10, cv_type='c_npmi')
 
-    NPMI_wiki_10_list, NPMI_wiki_10 = evaluations.topic_coherence.TC_on_wikipedia(
-        os.path.join(current_run_dir, 'top_words_10.txt'), cv_type='NPMI')
-    print(f"NPMI_wiki_10: {NPMI_wiki_10:.5f}")
+    # NPMI_wiki_10_list, NPMI_wiki_10 = evaluations.topic_coherence.TC_on_wikipedia(
+    #     os.path.join(current_run_dir, 'top_words_10.txt'), cv_type='NPMI')
+    # print(f"NPMI_wiki_10: {NPMI_wiki_10:.5f}")
 
-    Cp_wiki_10_list, Cp_wiki_10 = evaluations.topic_coherence.TC_on_wikipedia(
-        os.path.join(current_run_dir, 'top_words_10.txt'), cv_type='C_P')
-    print(f"Cp_wiki_10: {Cp_wiki_10:.5f}")
+    # Cp_wiki_10_list, Cp_wiki_10 = evaluations.topic_coherence.TC_on_wikipedia(
+    #     os.path.join(current_run_dir, 'top_words_10.txt'), cv_type='C_P')
+    # print(f"Cp_wiki_10: {Cp_wiki_10:.5f}")
+    
 
 
-    filename = f"results_{args.dataset}_topics{args.num_topics}_epochs{args.epochs}_w_ECR{args.weight_ECR}_w_TP{args.weight_loss_TP}_w_DTETP{args.weight_loss_DT_ETP}_w_clwords{args.weight_loss_cl_words}_w_clcluster{args.weight_loss_cl_large}_alpha_TP{args.alpha_TP} \
-                    alpha_ECR{args.alpha_ECR}_threshold_epochs{args.threshold_epochs}_.txt"
+
+    filename = f"results_{args.dataset}_topics{args.num_topics}_epochs{args.epochs}_w_ECR{args.weight_ECR}_w_TP{args.weight_loss_TP}_w_DTETP{args.weight_loss_DT_ETP}_w_clwords{args.weight_loss_cl_words}_w_clcluster{args.weight_loss_cl_large}_alpha_TP{args.alpha_TP}_alpha_ECR{args.alpha_ECR}_threshold_epochs{args.threshold_epochs}_beta_temp{args.beta_temp}_dropout{args.dropout}.txt"
     filename = filename.replace(' ', '_')
     filepath = os.path.join(current_run_dir, filename)
     with open(filepath, 'w') as f:
