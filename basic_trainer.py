@@ -97,8 +97,8 @@ class BasicTrainer:
                     except:
                         loss_rst_dict[key] += rst_dict[key] * len(batch_data)
             
-            if(epoch % 30 == 0):
-                print(f"Loss_TP: {loss_rst_dict['loss_TP']}")
+            # if(epoch % 30 == 0):
+            #     print(f"Loss_TP: {loss_rst_dict['loss_TP']}")
 
             if self.lr_scheduler:
                 lr_scheduler.step()
