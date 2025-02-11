@@ -253,7 +253,7 @@ class IDEAS(nn.Module):
                 positive = self.topic_embeddings[group_topics_tensor[positive_idx]].unsqueeze(0)
 
                 negative_candidates = torch.cat([
-                    self.topic_embeddings[torch.tensor(topics, device=self.topic_embeddings.device)]
+                    self.topic_embeddings[torch.tensor(topics, device=self.topic_embeddings.device, dtype=torch.long)]
                     for i, topics in enumerate(self.group_topic) if i != group_topics_tensor[0]
                 ])
 
