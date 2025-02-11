@@ -180,11 +180,11 @@ class IDEAS(nn.Module):
             negatives = self.topic_embeddings[negative_topic_idxes]
 
 
-            if self.metric_cl == "euclidean":
+            if self.metric_cl == 'euclidean':
                 pos_distance = F.pairwise_distance(anchor, positive)
                 neg_distances = F.pairwise_distance(anchor.repeat(num_negatives, 1), negatives)
                 
-            elif self.metric_cl == "cosine":
+            elif self.metric_cl == 'cosine':
                 pos_similarity = F.cosine_similarity(anchor, positive)
                 neg_similarities = F.cosine_similarity(anchor.repeat(num_negatives, 1), negatives)
                 pos_distance = 1 - pos_similarity
@@ -230,11 +230,11 @@ class IDEAS(nn.Module):
                 negative_word_idxes = np.random.choice(negative_candidates, size=num_negatives, replace=False)
                 negatives = self.word_embeddings[negative_word_idxes]
 
-                if self.metric_cl == "euclidean":
+                if self.metric_cl == 'euclidean':
                     pos_distance = F.pairwise_distance(anchor, positive)
                     neg_distances = F.pairwise_distance(anchor.repeat(num_negatives, 1), negatives)
                 
-                elif self.metric_cl == "cosine":
+                elif self.metric_cl == 'cosine':
                     pos_similarity = F.cosine_similarity(anchor, positive)
                     neg_similarities = F.cosine_similarity(anchor.repeat(num_negatives, 1), negatives)
                     pos_distance = 1 - pos_similarity
