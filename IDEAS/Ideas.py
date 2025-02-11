@@ -104,15 +104,8 @@ class IDEAS(nn.Module):
 
     def create_group_topic(self):
         with torch.no_grad():  
-            if self.metric_cl == 'euclidean':
-                distances = torch.cdist(self.topic_embeddings, self.topic_embeddings, p=2)
-                distances = distances.detach().cpu().numpy()
-            elif self.metric_cl == 'cosine':
-                similarity = F.cosine_similarity(self.topic_embeddings.unsqueeze(1), self.topic_embeddings.unsqueeze(0), dim=2)
-                distances = 1 - similarity.detach().cpu().numpy()
-            else:
-                raise ValueError("distance_metric must be either 'euclidean' or 'cosine'")
-
+            distances = torch.cdist(self.topic_embeddings, self.topic_embeddings, p=2)
+            distances = distances.detach().cpu().numpy()
 
         if self.method_cl == 'HAC':
             Z = linkage(distances, method='average', optimal_ordering=True) 
@@ -186,8 +179,18 @@ class IDEAS(nn.Module):
             negative_topic_idxes = np.random.choice(negative_candidates, size=num_negatives, replace=False)
             negatives = self.topic_embeddings[negative_topic_idxes]
 
-            pos_distance = F.pairwise_distance(anchor, positive)
-            neg_distances = F.pairwise_distance(anchor.repeat(num_negatives, 1), negatives)
+
+            if self.metric_cl == "euclidean":
+                pos_distance = F.pairwise_distance(anchor, positive)
+                neg_distances = F.pairwise_distance(anchor.repeat(num_negatives, 1), negatives)
+                
+            elif self.metric_cl == "cosine":
+                pos_similarity = F.cosine_similarity(anchor, positive)
+                neg_similarities = F.cosine_similarity(anchor.repeat(num_negatives, 1), negatives)
+                pos_distance = 1 - pos_similarity
+                neg_distances = 1 - neg_similarities
+            else:
+                raise ValueError(f"Invalid metric_cl: {self.metric_cl}")
 
             loss = torch.clamp(pos_distance - neg_distances + margin, min=0.0)
             loss_cl_large += loss.mean()
@@ -226,9 +229,18 @@ class IDEAS(nn.Module):
                 
                 negative_word_idxes = np.random.choice(negative_candidates, size=num_negatives, replace=False)
                 negatives = self.word_embeddings[negative_word_idxes]
+
+                if self.metric_cl == "euclidean":
+                    pos_distance = F.pairwise_distance(anchor, positive)
+                    neg_distances = F.pairwise_distance(anchor.repeat(num_negatives, 1), negatives)
                 
-                pos_distance = F.pairwise_distance(anchor, positive)
-                neg_distances = F.pairwise_distance(anchor.repeat(num_negatives, 1), negatives)
+                elif self.metric_cl == "cosine":
+                    pos_similarity = F.cosine_similarity(anchor, positive)
+                    neg_similarities = F.cosine_similarity(anchor.repeat(num_negatives, 1), negatives)
+                    pos_distance = 1 - pos_similarity
+                    neg_distances = 1 - neg_similarities
+                else:
+                    raise ValueError(f"Invalid metric_cl: {self.metric_cl}")
                 
                 loss = torch.clamp(pos_distance - neg_distances + margin, min=0.0)
                 loss_cl_words += loss.mean()
