@@ -246,7 +246,7 @@ class IDEAS(nn.Module):
                 if len(group_topics) < 2:
                     continue
 
-                group_topics_tensor = torch.tensor(group_topics, device=self.topic_embeddings.device)
+                group_topics_tensor = torch.tensor(group_topics, device=self.topic_embeddings.device, dtype=torch.long)
                 anchor = torch.mean(self.topic_embeddings[group_topics_tensor], dim=0, keepdim=True)
 
                 positive_idx = torch.randint(len(group_topics), (1,))
