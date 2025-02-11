@@ -248,41 +248,6 @@ class IDEAS(nn.Module):
         loss_cl_words *= self.weight_loss_cl_words
         return loss_cl_words
 
-        
-
-    def get_contrastive_loss_large_clusters(self, margin=0.2, num_negatives=10):
-        loss_cl_large = 0.0
-        
-        with torch.no_grad(): 
-            for group_topics in self.group_topic:
-                if len(group_topics) < 2:
-                    continue
-
-                group_topics_tensor = torch.tensor(group_topics, device=self.topic_embeddings.device, dtype=torch.long)
-                anchor = torch.mean(self.topic_embeddings[group_topics_tensor], dim=0, keepdim=True)
-
-                positive_idx = torch.randint(len(group_topics), (1,))
-                positive = self.topic_embeddings[group_topics_tensor[positive_idx]].unsqueeze(0)
-
-                negative_candidates = torch.cat([
-                    self.topic_embeddings[torch.tensor(topics, device=self.topic_embeddings.device, dtype=torch.long)]
-                    for i, topics in enumerate(self.group_topic) if i != group_topics_tensor[0]
-                ])
-
-                if len(negative_candidates) < num_negatives:
-                    continue
-
-                neg_indices = torch.randperm(len(negative_candidates))[:num_negatives]
-                negatives = negative_candidates[neg_indices]
-
-                pos_distance = F.pairwise_distance(anchor, positive)
-                neg_distances = F.pairwise_distance(anchor.repeat(num_negatives, 1), negatives)
-
-                loss = torch.clamp(pos_distance - neg_distances + margin, min=0.0)
-                loss_cl_large += loss.mean()
-
-        return loss_cl_large * self.weight_loss_cl_large
-
 
     def get_beta(self):
         dist = self.pairwise_euclidean_distance(
