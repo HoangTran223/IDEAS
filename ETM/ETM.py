@@ -63,6 +63,8 @@ class ETM(nn.Module):
         self.map_t2c = nn.Linear(self.word_embeddings.shape[1], self.cluster_mean.shape[1], bias=False)
         self.OT = OT(weight_OT, sinkhorn_alpha, sinkhorn_max_iter)
 
+
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.to(self.device)
         # #
 
@@ -80,6 +82,7 @@ class ETM(nn.Module):
             return mu
 
     def encode(self, x):
+        x = x.to(self.device)
         e1 = self.encoder1(x)
         return self.fc21(e1), self.fc22(e1)
     
@@ -103,7 +106,7 @@ class ETM(nn.Module):
             return theta
 
     def get_beta(self):
-        beta = F.softmax(torch.matmul(self.topic_embeddings, self.word_embeddings.T), dim=1)
+        beta = F.softmax(torch.matmul(self.topic_embeddings.to(self.device), self.word_embeddings.T.to(self.device)), dim=1)
         return beta
 
     def forward(self, indices, input, avg_loss=True, epoch_id = None):
