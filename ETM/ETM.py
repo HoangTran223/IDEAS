@@ -83,7 +83,7 @@ class ETM(nn.Module):
 
     def encode(self, x):
         x = x.to(self.device)
-        e1 = self.encoder1(x)
+        e1 = self.encoder1(x).to(self.device)
         return self.fc21(e1), self.fc22(e1)
     
 
@@ -97,9 +97,10 @@ class ETM(nn.Module):
         # Warn: normalize the input if use Relu.
         # https://github.com/adjidieng/ETM/issues/3
         norm_input = input / input.sum(1, keepdim=True)
+        norm_input = norm_input.to(self.device)
         mu, logvar = self.encode(norm_input)
-        z = self.reparameterize(mu, logvar)
-        theta = F.softmax(z, dim=-1)
+        z = self.reparameterize(mu, logvar).to(self.device)
+        theta = F.softmax(z, dim=-1).to(self.device)
         if self.training or self.theta_train == True:
             return theta, mu, logvar
         else:
@@ -112,8 +113,8 @@ class ETM(nn.Module):
     def forward(self, indices, input, avg_loss=True, epoch_id = None):
         bow = input[0].to(self.device)
         theta, mu, logvar = self.get_theta(bow)
-        beta = self.get_beta()
-        recon_input = torch.matmul(theta, beta)
+        beta = self.get_beta().to(self.device)
+        recon_input = torch.matmul(theta, beta).to(self.device)
 
         loss_OT = 0
         if self.is_OT:
