@@ -135,6 +135,7 @@ if __name__ == "__main__":
                         weight_loss_TP=args.weight_loss_TP,
                         weight_loss_DT_ETP= args.weight_loss_DT_ETP,
                         alpha_TP=args.alpha_TP,
+                        DT_alpha=args.DT_alpha,
                         alpha_ECR=args.alpha_ECR,
                         beta_temp=args.beta_temp,
                         vocab=dataset.vocab,
